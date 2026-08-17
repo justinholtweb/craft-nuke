@@ -1,0 +1,7 @@
+{# Inline styles only. Every serious email client strips <style>, and half of them strip classes
+   too, so the report is built out of tables and attributes rather than CSS it can't rely on. #}
+{% set fontStack = "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;" %}
+{% set bodyStyle = fontStack ~ "font-size: 14px; line-height: 1.5; color: #202b38;" %}
+{% set mutedStyle = "color: #606d7b; font-size: 13px;" %}
+{% set thStyle = "text-align: left; padding: 6px 10px; border-bottom: 2px solid #cdd8e4; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #606d7b;" %}
+{% set tdStyle = "padding: 6px 10px; border-bottom: 1px solid #e4e9f0;" %}

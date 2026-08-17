@@ -1,0 +1,50 @@
+{% extends "_layouts/cp" %}
+
+{% set title = "Run history"|t('nuke') %}
+{% set selectedSubnavItem = 'runs' %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    <div class="nuke-panel">
+        <p class="nuke-sub">
+            <a class="btn{{ type ? '' : ' active' }}" href="{{ url('nuke/runs') }}">{{ "Everything"|t('nuke') }}</a>
+            <a class="btn{{ type == 'strike' ? ' active' : '' }}" href="{{ url('nuke/runs', { type: 'strike' }) }}">{{ "Strikes"|t('nuke') }}</a>
+            <a class="btn{{ type == 'sweep' ? ' active' : '' }}" href="{{ url('nuke/runs', { type: 'sweep' }) }}">{{ "Sweeps"|t('nuke') }}</a>
+        </p>
+
+        {% if runs|length %}
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ "What"|t('nuke') }}</th>
+                        <th class="thin">{{ "Type"|t('nuke') }}</th>
+                        <th>{{ "When"|t('nuke') }}</th>
+                        <th>{{ "Who"|t('nuke') }}</th>
+                        <th class="thin">{{ "Removed"|t('nuke') }}</th>
+                        <th class="thin">{{ "Took"|t('nuke') }}</th>
+                        <th class="thin">{{ "Status"|t('nuke') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                        <tr>
+                            <td>
+                                <a href="{{ run.cpUrl }}">{{ run.summary ?? ('Run #{id}'|t('nuke', { id: run.id })) }}</a>
+                                {% if run.note %}<div class="light">{{ run.note }}</div>{% endif %}
+                            </td>
+                            <td class="thin">{{ run.isStrike() ? "Strike"|t('nuke') : "Sweep"|t('nuke') }}</td>
+                            <td>{{ run.dateCreated|datetime('short') }}</td>
+                            <td>{% if run.user %}{{ run.user.friendlyName }}{% elseif run.scheduled %}{{ "the scheduler"|t('nuke') }}{% else %}{{ "the console"|t('nuke') }}{% endif %}</td>
+                            <td class="thin">{{ run.removed|number_format }}</td>
+                            <td class="thin">{{ run.duration|number_format(1) }}s</td>
+                            <td class="thin"><span class="status {{ run.statusColor() }}"></span>{{ run.statusLabel() }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="nuke-quiet">{{ "Nothing has been run yet."|t('nuke') }}</p>
+        {% endif %}
+    </div>
+{% endblock %}

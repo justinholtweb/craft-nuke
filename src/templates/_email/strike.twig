@@ -1,0 +1,61 @@
+{% include "nuke/_email/_style" %}
+
+<div style="{{ bodyStyle }}">
+    <h2 style="margin: 0 0 4px;">{{ "Content was deleted"|t('nuke') }}</h2>
+    <p style="{{ mutedStyle }} margin: 0 0 20px;">
+        {{ run ? run.dateCreated|datetime('long') : '' }}
+        {% if run and run.user %} — {{ run.user.friendlyName }}{% endif %}
+    </p>
+
+    <p style="margin: 0 0 8px; padding: 12px 14px; background: #fdf2f2; border-left: 3px solid #cf1124;">
+        {{ run.summary ?? '' }}
+    </p>
+
+    {% if run and run.note %}
+        <p style="{{ mutedStyle }} margin: 0 0 20px;">{{ run.note }}</p>
+    {% endif %}
+
+    <table cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-top: 16px;">
+        <tbody>
+            <tr>
+                <td style="{{ tdStyle }}">{{ "Elements"|t('nuke') }}</td>
+                <td style="{{ tdStyle }} text-align: right;"><strong>{{ outcome.elements|number_format }}</strong></td>
+            </tr>
+            <tr>
+                <td style="{{ tdStyle }}">{{ "Drafts"|t('nuke') }}</td>
+                <td style="{{ tdStyle }} text-align: right;">{{ outcome.drafts|number_format }}</td>
+            </tr>
+            <tr>
+                <td style="{{ tdStyle }}">{{ "Revisions"|t('nuke') }}</td>
+                <td style="{{ tdStyle }} text-align: right;">{{ outcome.revisions|number_format }}</td>
+            </tr>
+            <tr>
+                <td style="{{ tdStyle }}">{{ "Relations"|t('nuke') }}</td>
+                <td style="{{ tdStyle }} text-align: right;">{{ outcome.relations|number_format }}</td>
+            </tr>
+            <tr>
+                <td style="{{ tdStyle }}">{{ "Permanent"|t('nuke') }}</td>
+                <td style="{{ tdStyle }} text-align: right;">{{ target.hardDelete ? "yes"|t('nuke') : "no — in the trash"|t('nuke') }}</td>
+            </tr>
+            {% if outcome.failed %}
+                <tr>
+                    <td style="{{ tdStyle }} color: #cf1124;">{{ "Failed"|t('nuke') }}</td>
+                    <td style="{{ tdStyle }} text-align: right; color: #cf1124;">{{ outcome.failed|number_format }}</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    {% if outcome.backupPath %}
+        <p style="{{ mutedStyle }} margin: 20px 0 0;">
+            {{ "Backup taken first:"|t('nuke') }}
+            <span style="font-family: monospace;">{{ outcome.backupPath }}</span>
+        </p>
+    {% endif %}
+
+    {% if run %}
+        <p style="margin: 24px 0 0;">
+            <a href="{{ run.cpUrl }}" style="color: #0b69a3;">{{ "Full record"|t('nuke') }} &rarr;</a>
+        </p>
+    {% endif %}
+</div>

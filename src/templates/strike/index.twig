@@ -1,0 +1,304 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Strike"|t('nuke') %}
+{% set selectedSubnavItem = 'strike' %}
+
+{% set scopeOptions = [] %}
+{% for handle, scope in scopes %}
+    {% set scopeOptions = scopeOptions|merge([{ label: scope.label(), value: handle }]) %}
+{% endfor %}
+
+{% set siteOptions = [] %}
+{% for site in sites %}
+    {% set siteOptions = siteOptions|merge([{ label: site.name, value: site.id }]) %}
+{% endfor %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    {% if scopes is empty %}
+        <p>{{ "There is nothing on this site to target yet."|t('nuke') }}</p>
+    {% else %}
+        <form id="nuke-strike" method="post" accept-charset="UTF-8">
+            {{ csrfInput() }}
+            {{ actionInput('nuke/strike/fire') }}
+
+            <div class="nuke-panel">
+                <h2>{{ "What to delete"|t('nuke') }}</h2>
+
+                {{ forms.selectField({
+                    label: "Scope"|t('nuke'),
+                    id: 'scope',
+                    name: 'scope',
+                    options: scopeOptions,
+                    value: target.scope,
+                    instructions: "Which kind of content this strike is aimed at."|t('nuke'),
+                }) }}
+
+                {% for handle, scope in scopes %}
+                    {% set sourceOptions = [] %}
+                    {% for option in scope.sourceOptions() %}
+                        {% set sourceOptions = sourceOptions|merge([{
+                            label: option.label ~ ' (' ~ option.handle ~ ')',
+                            value: option.value,
+                        }]) %}
+                    {% endfor %}
+
+                    <div class="nuke-scope-fields" data-scope="{{ handle }}"{% if handle != target.scope %} style="display:none"{% endif %}>
+                        {% if sourceOptions|length %}
+                            {{ forms.checkboxGroupField({
+                                label: scope.sourceLabel(),
+                                name: 'sourceIds',
+                                options: sourceOptions,
+                                values: target.sourceIds,
+                                instructions: "Leave every box unticked to target all of them."|t('nuke'),
+                            }) }}
+                        {% endif %}
+
+                        {% set typeOptions = [] %}
+                        {% for option in scope.typeOptions() %}
+                            {% set typeOptions = typeOptions|merge([{
+                                label: option.label ~ ' (' ~ option.handle ~ ')',
+                                value: option.value,
+                            }]) %}
+                        {% endfor %}
+
+                        {% if typeOptions|length %}
+                            {{ forms.checkboxGroupField({
+                                label: "Entry types"|t('nuke'),
+                                name: 'typeIds',
+                                options: typeOptions,
+                                values: target.typeIds,
+                                instructions: "Optional. Narrows the strike within the sections above."|t('nuke'),
+                            }) }}
+                        {% endif %}
+
+                        {% set statusOptions = [] %}
+                        {% for option in scope.statusOptions() %}
+                            {% set statusOptions = statusOptions|merge([{ label: option.label, value: option.value }]) %}
+                        {% endfor %}
+
+                        {{ forms.selectField({
+                            label: "Status"|t('nuke'),
+                            name: 'status',
+                            options: statusOptions,
+                            value: target.status,
+                        }) }}
+                    </div>
+                {% endfor %}
+
+                {% if siteOptions|length > 1 %}
+                    {{ forms.checkboxGroupField({
+                        label: "Sites"|t('nuke'),
+                        name: 'siteIds',
+                        options: siteOptions,
+                        values: target.siteIds,
+                        instructions: "Leave unticked for every site. Deleting an element removes it from all of its sites regardless — this only narrows what matches."|t('nuke'),
+                    }) }}
+                {% endif %}
+            </div>
+
+            <div class="nuke-panel">
+                <h2>{{ "Narrow it down"|t('nuke') }}</h2>
+
+                {{ forms.textField({
+                    label: "Last updated before"|t('nuke'),
+                    name: 'updatedBefore',
+                    value: target.updatedBefore,
+                    placeholder: '-2 years',
+                    instructions: "A date, or something relative like “-90 days”. Leave blank for any age."|t('nuke'),
+                }) }}
+
+                {{ forms.textField({
+                    label: "Created before"|t('nuke'),
+                    name: 'createdBefore',
+                    value: target.createdBefore,
+                    placeholder: '2020-01-01',
+                }) }}
+
+                {{ forms.textField({
+                    label: "Search"|t('nuke'),
+                    name: 'search',
+                    value: target.search,
+                    instructions: "Craft’s own search syntax. Only matches what the search index knows about."|t('nuke'),
+                }) }}
+
+                {{ forms.textField({
+                    label: "Stop after"|t('nuke'),
+                    name: 'limit',
+                    type: 'number',
+                    size: 8,
+                    value: target.limit,
+                    instructions: "Optional cap on how many elements this run may touch."|t('nuke'),
+                }) }}
+
+                {{ forms.lightswitchField({
+                    label: "Include elements already in the trash"|t('nuke'),
+                    name: 'includeTrashed',
+                    on: target.includeTrashed,
+                }) }}
+            </div>
+
+            <div class="nuke-panel">
+                <h2>{{ "How it runs"|t('nuke') }}</h2>
+
+                {{ forms.lightswitchField({
+                    label: "Take a database backup first"|t('nuke'),
+                    name: 'backup',
+                    on: target.backup,
+                    instructions: "If the backup fails, nothing is deleted."|t('nuke'),
+                }) }}
+
+                {{ forms.lightswitchField({
+                    label: "Delete permanently"|t('nuke'),
+                    name: 'hardDelete',
+                    on: target.hardDelete,
+                    disabled: not canHardDelete,
+                    instructions: canHardDelete
+                        ? "Off, elements go to the trash and stay recoverable. On, they are gone."|t('nuke')
+                        : "You don’t have permission to delete permanently."|t('nuke'),
+                }) }}
+
+                {{ forms.lightswitchField({
+                    label: "Also remove drafts and revisions permanently"|t('nuke'),
+                    name: 'purgeHistory',
+                    on: target.purgeHistory,
+                    instructions: "Drafts and revisions go with the element either way. This removes them outright, so restoring from the trash brings back no history."|t('nuke'),
+                }) }}
+
+                {{ forms.lightswitchField({
+                    label: "Delete relations"|t('nuke'),
+                    name: 'deleteRelations',
+                    on: target.deleteRelations,
+                    instructions: "Clears rows pointing at these elements. Only affects a non-permanent delete — a permanent one takes them anyway."|t('nuke'),
+                }) }}
+
+                {{ forms.lightswitchField({
+                    label: "Run garbage collection afterwards"|t('nuke'),
+                    name: 'runGc',
+                    on: target.runGc,
+                }) }}
+
+                {{ forms.lightswitchField({
+                    label: "Run in the background"|t('nuke'),
+                    name: 'queue',
+                    on: target.queue,
+                    instructions: "Pushes the strike onto the queue instead of running it in this request. Use it for anything large."|t('nuke'),
+                }) }}
+
+                {{ forms.textField({
+                    label: "Note"|t('nuke'),
+                    name: 'note',
+                    value: target.note,
+                    placeholder: "Decommissioning the 2019 microsite"|t('nuke'),
+                    instructions: "Recorded against the run. Worth more in six months than you think."|t('nuke'),
+                }) }}
+            </div>
+
+            <div id="nuke-radius">
+                <div class="nuke-panel">
+                    <p class="nuke-quiet">{{ "Choose a scope to see what would be deleted."|t('nuke') }}</p>
+                </div>
+            </div>
+        </form>
+    {% endif %}
+{% endblock %}
+
+{% js %}
+(function() {
+    var form = document.getElementById('nuke-strike');
+    if (!form) return;
+
+    var panel = document.getElementById('nuke-radius');
+    var timer = null;
+    var inFlight = null;
+
+    function showScopeFields() {
+        var scope = form.querySelector('[name="scope"]').value;
+        form.querySelectorAll('.nuke-scope-fields').forEach(function(el) {
+            var mine = el.getAttribute('data-scope') === scope;
+            el.style.display = mine ? '' : 'none';
+            // Hidden scopes must not post their fields, or a section id from one scope arrives
+            // as a source id for another and matches something entirely unintended.
+            el.querySelectorAll('input, select').forEach(function(field) {
+                field.disabled = !mine;
+            });
+        });
+    }
+
+    function refresh() {
+        if (inFlight) {
+            inFlight.abort();
+        }
+
+        var controller = new AbortController();
+        inFlight = controller;
+
+        var data = new FormData(form);
+        data.set('action', 'nuke/strike/preview');
+
+        fetch(Craft.getActionUrl('nuke/strike/preview'), {
+            method: 'POST',
+            body: data,
+            credentials: 'same-origin',
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function(response) { return response.json(); })
+            .then(function(json) {
+                panel.innerHTML = json.html;
+                wireConfirmation();
+            })
+            .catch(function(e) {
+                if (e.name !== 'AbortError') {
+                    panel.innerHTML = '<div class="nuke-panel"><p class="error">' +
+                        Craft.t('nuke', 'Couldn’t work out the blast radius.') + '</p></div>';
+                }
+            });
+    }
+
+    function schedule() {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(refresh, 350);
+    }
+
+    // The fire button stays disabled until the typed phrase matches exactly. The server checks
+    // this again — this is only so the button doesn't look available when it isn't.
+    function wireConfirmation() {
+        var input = panel.querySelector('#nuke-confirmation');
+        var button = panel.querySelector('#nuke-fire');
+        if (!button) return;
+
+        if (!input) {
+            button.classList.remove('disabled');
+            button.disabled = false;
+            return;
+        }
+
+        var expected = input.getAttribute('data-phrase');
+        var check = function() {
+            var ok = input.value.trim() === expected;
+            button.disabled = !ok;
+            button.classList.toggle('disabled', !ok);
+            button.classList.toggle('nuke-armed', ok);
+        };
+
+        input.addEventListener('input', check);
+        check();
+    }
+
+    form.addEventListener('change', function(e) {
+        if (e.target.id === 'nuke-confirmation') return;
+        showScopeFields();
+        schedule();
+    });
+    form.addEventListener('input', function(e) {
+        if (e.target.id === 'nuke-confirmation') return;
+        if (e.target.tagName === 'INPUT' && e.target.type === 'text') schedule();
+    });
+
+    showScopeFields();
+    refresh();
+})();
+{% endjs %}

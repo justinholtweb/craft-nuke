@@ -1,0 +1,151 @@
+{% extends "_layouts/cp" %}
+
+{% set title = run.summary ?? ('Run #{id}'|t('nuke', { id: run.id })) %}
+{% set selectedSubnavItem = 'runs' %}
+{% set crumbs = [{ label: "Run history"|t('nuke'), url: url('nuke/runs') }] %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    <div class="nuke-panel">
+        <h2>{{ "What happened"|t('nuke') }}</h2>
+
+        <div class="nuke-tally">
+            <div class="{{ run.isStrike() ? 'nuke-hot' : '' }}">
+                <div class="nuke-n">{{ run.removed|number_format }}</div>
+                <div class="nuke-l">{{ "removed"|t('nuke') }}</div>
+            </div>
+            {% if run.failed %}
+                <div class="nuke-hot">
+                    <div class="nuke-n">{{ run.failed|number_format }}</div>
+                    <div class="nuke-l">{{ "failed"|t('nuke') }}</div>
+                </div>
+            {% endif %}
+            <div>
+                <div class="nuke-n">{{ run.duration|number_format(1) }}s</div>
+                <div class="nuke-l">{{ "took"|t('nuke') }}</div>
+            </div>
+            <div>
+                <div class="nuke-n"><span class="status {{ run.statusColor() }}"></span></div>
+                <div class="nuke-l">{{ run.statusLabel() }}</div>
+            </div>
+        </div>
+
+        <table class="data fullwidth">
+            <tbody>
+                <tr><th class="thin">{{ "When"|t('nuke') }}</th><td>{{ run.dateCreated|datetime('long') }}</td></tr>
+                <tr><th class="thin">{{ "Who"|t('nuke') }}</th><td>{% if run.user %}{{ run.user.friendlyName }}{% elseif run.scheduled %}{{ "the scheduler"|t('nuke') }}{% else %}{{ "the console"|t('nuke') }}{% endif %}</td></tr>
+                {% if run.note %}<tr><th class="thin">{{ "Note"|t('nuke') }}</th><td>{{ run.note }}</td></tr>{% endif %}
+                {% if run.backupPath %}
+                    <tr>
+                        <th class="thin">{{ "Backup"|t('nuke') }}</th>
+                        <td>
+                            <span class="nuke-mono">{{ run.backupPath }}</span>
+                            {% if not backupExists %}
+                                <span class="error"> — {{ "no longer on disk"|t('nuke') }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+                {% if run.drift() is not null %}
+                    <tr>
+                        <th class="thin">{{ "Against the preview"|t('nuke') }}</th>
+                        <td>
+                            {% set drift = run.drift() %}
+                            {% if drift == 0 %}
+                                {{ "Exactly what the preview said."|t('nuke') }}
+                            {% else %}
+                                <span class="{{ drift > 0 ? 'error' : '' }}">
+                                    {{ "{n} {dir} than the preview predicted."|t('nuke', {
+                                        n: drift|abs|number_format,
+                                        dir: drift > 0 ? "more"|t('nuke') : "fewer"|t('nuke'),
+                                    }) }}
+                                </span>
+                                <span class="light">
+                                    {{ "Content changes between previewing and running; a strike that was queued may have waited."|t('nuke') }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if run.isStrike() %}
+        {% set outcome = run.outcome ?? {} %}
+        <div class="nuke-panel">
+            <h2>{{ "Deleted"|t('nuke') }}</h2>
+            <div class="nuke-tally">
+                <div><div class="nuke-n">{{ (outcome.elements ?? 0)|number_format }}</div><div class="nuke-l">{{ "elements"|t('nuke') }}</div></div>
+                <div><div class="nuke-n">{{ (outcome.drafts ?? 0)|number_format }}</div><div class="nuke-l">{{ "drafts"|t('nuke') }}</div></div>
+                <div><div class="nuke-n">{{ (outcome.revisions ?? 0)|number_format }}</div><div class="nuke-l">{{ "revisions"|t('nuke') }}</div></div>
+                <div><div class="nuke-n">{{ (outcome.relations ?? 0)|number_format }}</div><div class="nuke-l">{{ "relations"|t('nuke') }}</div></div>
+                {% if outcome.bytes ?? 0 %}
+                    <div><div class="nuke-n">{{ outcome.bytes|filesize }}</div><div class="nuke-l">{{ "of files"|t('nuke') }}</div></div>
+                {% endif %}
+            </div>
+
+            {% if outcome.errors ?? [] %}
+                <h3>{{ "Errors"|t('nuke') }}</h3>
+                <ul class="nuke-sample">
+                    {% for error in outcome.errors %}<li class="error">{{ error }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
+        {% if run.target %}
+            <div class="nuke-panel">
+                <h2>{{ "The target"|t('nuke') }}</h2>
+                <table class="data fullwidth">
+                    <tbody>
+                        {% for key, value in run.target %}
+                            {% if value is not empty or value is same as(false) %}
+                                <tr>
+                                    <th class="thin">{{ key }}</th>
+                                    <td class="nuke-mono">
+                                        {%- if value is iterable -%}{{ value|join(', ') }}
+                                        {%- elseif value is same as(true) -%}true
+                                        {%- elseif value is same as(false) -%}false
+                                        {%- else -%}{{ value }}{%- endif -%}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    {% else %}
+        {% set results = (run.outcome ?? {}).results ?? {} %}
+        <div class="nuke-panel">
+            <h2>{{ "Tasks"|t('nuke') }}</h2>
+            {% if results is not empty %}
+                <table class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th>{{ "Task"|t('nuke') }}</th>
+                            <th class="thin">{{ "Found"|t('nuke') }}</th>
+                            <th class="thin">{{ "Removed"|t('nuke') }}</th>
+                            <th class="thin">{{ "Size"|t('nuke') }}</th>
+                            <th>{{ "Notes"|t('nuke') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for handle, result in results %}
+                            <tr>
+                                <td>{{ result.label ?? handle }} <span class="light nuke-mono">{{ handle }}</span></td>
+                                <td class="thin">{{ (result.found ?? 0)|number_format }}</td>
+                                <td class="thin">{{ (result.removed ?? 0)|number_format }}</td>
+                                <td class="thin">{{ (result.bytes ?? 0) ? result.bytes|filesize : '' }}</td>
+                                <td class="{{ (result.failed ?? false) ? 'error' : 'light' }}">{{ result.message ?? '' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="nuke-quiet">{{ "No task detail was recorded."|t('nuke') }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}

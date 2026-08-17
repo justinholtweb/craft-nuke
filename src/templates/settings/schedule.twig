@@ -1,0 +1,137 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Schedule"|t('nuke') %}
+{% set selectedSubnavItem = 'settings' %}
+{% set fullPageForm = true %}
+
+{% set tabs = {
+    general: { label: "Guardrails"|t('nuke'), url: url('nuke/settings') },
+    sweepers: { label: "Sweepers"|t('nuke'), url: url('nuke/settings/sweepers') },
+    schedule: { label: "Schedule"|t('nuke'), url: url('nuke/settings/schedule') },
+} %}
+{% set selectedTab = 'schedule' %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    {{ actionInput('nuke/settings/save') }}
+    {{ redirectInput('nuke/settings/schedule') }}
+
+    {% if not isPro %}
+        <div class="nuke-panel">
+            <p>{{ "Scheduled sweeps and email reports are part of Nuke Pro. Everything on this screen can be configured now and will start working the moment the edition changes."|t('nuke') }}</p>
+        </div>
+    {% endif %}
+
+    <div class="nuke-panel">
+        <h2>{{ "Scheduled sweeps"|t('nuke') }}</h2>
+        <p class="nuke-sub">{{ schedules.describe() }}
+            {% if settings.scheduleEnabled and isPro %}
+                {{ "Next: {when}."|t('nuke', { when: schedules.nextOccurrence()|date('D j M Y, H:i') }) }}
+            {% endif %}
+        </p>
+
+        {{ forms.lightswitchField({
+            label: "Sweep on a schedule"|t('nuke'),
+            name: 'settings[scheduleEnabled]',
+            on: settings.scheduleEnabled,
+        }) }}
+
+        {{ forms.selectField({
+            label: "How often"|t('nuke'),
+            name: 'settings[scheduleFrequency]',
+            value: settings.scheduleFrequency,
+            options: [
+                { label: "Daily"|t('nuke'), value: 'daily' },
+                { label: "Weekly"|t('nuke'), value: 'weekly' },
+                { label: "Monthly"|t('nuke'), value: 'monthly' },
+            ],
+        }) }}
+
+        {{ forms.textField({
+            label: "Hour"|t('nuke'),
+            name: 'settings[scheduleHour]',
+            type: 'number',
+            size: 4,
+            min: 0,
+            max: 23,
+            value: settings.scheduleHour,
+            instructions: "In the system timezone, on the hour."|t('nuke'),
+        }) }}
+
+        {{ forms.selectField({
+            label: "Day of week"|t('nuke'),
+            name: 'settings[scheduleWeekday]',
+            value: settings.scheduleWeekday,
+            options: [
+                { label: "Monday"|t('nuke'), value: 1 },
+                { label: "Tuesday"|t('nuke'), value: 2 },
+                { label: "Wednesday"|t('nuke'), value: 3 },
+                { label: "Thursday"|t('nuke'), value: 4 },
+                { label: "Friday"|t('nuke'), value: 5 },
+                { label: "Saturday"|t('nuke'), value: 6 },
+                { label: "Sunday"|t('nuke'), value: 7 },
+            ],
+            instructions: "Used by the weekly schedule."|t('nuke'),
+        }) }}
+
+        {{ forms.textField({
+            label: "Day of month"|t('nuke'),
+            name: 'settings[scheduleDayOfMonth]',
+            type: 'number',
+            size: 4,
+            min: 1,
+            max: 28,
+            value: settings.scheduleDayOfMonth,
+            instructions: "Capped at 28 on purpose — “the 31st” quietly skips three months a year."|t('nuke'),
+        }) }}
+
+        {{ forms.selectField({
+            label: "How due sweeps start"|t('nuke'),
+            name: 'settings[scheduleTrigger]',
+            value: settings.scheduleTrigger,
+            options: [
+                { label: "A cron job"|t('nuke'), value: 'cron' },
+                { label: "Control panel traffic"|t('nuke'), value: 'web' },
+            ],
+            instructions: "Cron is the reliable one: `php craft nuke/sweep/due --dry-run=0` every fifteen minutes — the console defaults to a dry run everywhere, so the flag is what makes it real. The other piggybacks on control panel requests, which is fine for a site somebody logs into daily."|t('nuke'),
+        }) }}
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Notifications"|t('nuke') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: "Email a report"|t('nuke'),
+            name: 'settings[notifyEnabled]',
+            on: settings.notifyEnabled,
+        }) }}
+
+        {{ forms.textareaField({
+            label: "Recipients"|t('nuke'),
+            name: 'settings[notifyRecipients]',
+            value: settings.notifyRecipients|join("\n"),
+            rows: 3,
+            instructions: "One address per line. Environment variables like $NUKE_REPORT_EMAIL work."|t('nuke'),
+        }) }}
+
+        {{ forms.selectField({
+            label: "When to send"|t('nuke'),
+            name: 'settings[notifyOn]',
+            value: settings.notifyOn,
+            options: [
+                { label: "After every run"|t('nuke'), value: 'always' },
+                { label: "Only when something was removed"|t('nuke'), value: 'changes' },
+                { label: "Only when something went wrong"|t('nuke'), value: 'problems' },
+            ],
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Email after a strike too"|t('nuke'),
+            name: 'settings[notifyOnStrike]',
+            on: settings.notifyOnStrike,
+            instructions: "A bulk deletion is precisely the event the rest of the team wants to hear about."|t('nuke'),
+        }) }}
+    </div>
+{% endblock %}

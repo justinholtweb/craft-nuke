@@ -1,0 +1,123 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Nuke"|t('nuke') %}
+{% set selectedSubnavItem = 'dashboard' %}
+
+{% set canStrike = currentUser.can('nuke:strike') %}
+{% set canSweep = currentUser.can('nuke:sweep') %}
+
+{% block actionButton %}
+    {% if canSweep %}
+        <a class="btn" href="{{ url('nuke/sweep') }}">{{ "Sweep"|t('nuke') }}</a>
+    {% endif %}
+    {% if canStrike %}
+        <a class="btn submit" href="{{ url('nuke/strike') }}">{{ "New strike"|t('nuke') }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    <div class="nuke-cards">
+        <div class="nuke-card">
+            <h4>{{ "Runs"|t('nuke') }}</h4>
+            <div class="nuke-figure">{{ stats.runs|number_format }}</div>
+            <div class="nuke-sub">
+                {{ "{strikes} strikes, {sweeps} sweeps"|t('nuke', {
+                    strikes: stats.strikes|number_format,
+                    sweeps: stats.sweeps|number_format,
+                }) }}
+            </div>
+        </div>
+        <div class="nuke-card">
+            <h4>{{ "Things removed"|t('nuke') }}</h4>
+            <div class="nuke-figure">{{ stats.removed|number_format }}</div>
+            <div class="nuke-sub">{{ "across every recorded run"|t('nuke') }}</div>
+        </div>
+        <div class="nuke-card">
+            <h4>{{ "Last sweep"|t('nuke') }}</h4>
+            {% if stats.lastSweep %}
+                <div class="nuke-figure">{{ stats.lastSweep.removed|number_format }}</div>
+                <div class="nuke-sub">{{ stats.lastSweep.dateCreated|datetime('short') }}</div>
+            {% else %}
+                <div class="nuke-figure">—</div>
+                <div class="nuke-sub">{{ "Never swept."|t('nuke') }}</div>
+            {% endif %}
+        </div>
+        <div class="nuke-card">
+            <h4>{{ "Last strike"|t('nuke') }}</h4>
+            {% if stats.lastStrike %}
+                <div class="nuke-figure">{{ stats.lastStrike.removed|number_format }}</div>
+                <div class="nuke-sub">{{ stats.lastStrike.dateCreated|datetime('short') }}</div>
+            {% else %}
+                <div class="nuke-figure">—</div>
+                <div class="nuke-sub">{{ "Nothing struck yet."|t('nuke') }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Housekeeping"|t('nuke') }}</h2>
+        <p class="nuke-sub">
+            {{ "{on} of {total} sweepers are switched on."|t('nuke', {
+                on: enabledSweepers|length,
+                total: sweepers.available()|length,
+            }) }}
+            {% if isPro %}
+                {{ schedules.describe() }}
+                {% if settings.scheduleEnabled %}
+                    {{ "Next: {when}."|t('nuke', { when: schedules.nextOccurrence()|date('D j M, H:i') }) }}
+                {% endif %}
+            {% else %}
+                {{ "Scheduled sweeps need Nuke Pro."|t('nuke') }}
+            {% endif %}
+        </p>
+
+        {% if canSweep %}
+            <p>
+                <a class="btn" href="{{ url('nuke/sweep') }}">{{ "See what a sweep would find"|t('nuke') }}</a>
+                {% if currentUser.admin %}
+                    <a class="btn" href="{{ url('nuke/settings/sweepers') }}">{{ "Configure sweepers"|t('nuke') }}</a>
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Recent runs"|t('nuke') }}</h2>
+
+        {% if recent|length %}
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ "What"|t('nuke') }}</th>
+                        <th>{{ "When"|t('nuke') }}</th>
+                        <th>{{ "Who"|t('nuke') }}</th>
+                        <th class="thin">{{ "Removed"|t('nuke') }}</th>
+                        <th class="thin">{{ "Status"|t('nuke') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in recent %}
+                        <tr>
+                            <td>
+                                <a href="{{ run.cpUrl }}">{{ run.summary ?? ('Run #{id}'|t('nuke', { id: run.id })) }}</a>
+                                {% if run.scheduled %}<span class="light"> — {{ "scheduled"|t('nuke') }}</span>{% endif %}
+                            </td>
+                            <td>{{ run.dateCreated|datetime('short') }}</td>
+                            <td>{% if run.user %}{{ run.user.friendlyName }}{% elseif run.scheduled %}{{ "the scheduler"|t('nuke') }}{% else %}{{ "the console"|t('nuke') }}{% endif %}</td>
+                            <td class="thin">{{ run.removed|number_format }}</td>
+                            <td class="thin">
+                                <span class="status {{ run.statusColor() }}"></span>{{ run.statusLabel() }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p><a href="{{ url('nuke/runs') }}">{{ "All runs"|t('nuke') }} &rarr;</a></p>
+        {% else %}
+            <p class="nuke-quiet">{{ "Nothing has been run yet."|t('nuke') }}</p>
+        {% endif %}
+    </div>
+{% endblock %}

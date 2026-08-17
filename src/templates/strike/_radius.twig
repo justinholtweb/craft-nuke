@@ -1,0 +1,121 @@
+{# The blast radius. Re-rendered on every change to the form above it. #}
+{% import "_includes/forms" as forms %}
+
+<div class="nuke-panel{{ radius.errors is not empty ? '' : ' nuke-danger' }}">
+    <h2>{{ "Blast radius"|t('nuke') }}</h2>
+    <p class="nuke-sub">{{ radius.description }}</p>
+
+    {% if radius.errors is not empty %}
+        <ul class="nuke-warnings">
+            {% for error in radius.errors %}
+                <li class="nuke-error">{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% elseif radius.isEmpty() %}
+        <p class="nuke-quiet">{{ "Nothing matches. Nothing would be deleted."|t('nuke') }}</p>
+    {% else %}
+        <div class="nuke-tally">
+            <div class="nuke-hot">
+                <div class="nuke-n">{{ radius.elements|number_format }}</div>
+                <div class="nuke-l">{{ "elements"|t('nuke') }}</div>
+            </div>
+            <div>
+                <div class="nuke-n">{{ radius.drafts|number_format }}</div>
+                <div class="nuke-l">{{ "drafts"|t('nuke') }}</div>
+            </div>
+            <div>
+                <div class="nuke-n">{{ radius.revisions|number_format }}</div>
+                <div class="nuke-l">{{ "revisions"|t('nuke') }}</div>
+            </div>
+            <div>
+                <div class="nuke-n">{{ (radius.incomingRelations + radius.outgoingRelations)|number_format }}</div>
+                <div class="nuke-l">{{ "relations"|t('nuke') }}</div>
+            </div>
+            {% if radius.files %}
+                <div>
+                    <div class="nuke-n">{{ radius.bytes|filesize }}</div>
+                    <div class="nuke-l">{{ "{n} files"|t('nuke', { n: radius.files|number_format }) }}</div>
+                </div>
+            {% endif %}
+            {% if radius.collateralCount %}
+                <div>
+                    <div class="nuke-n">{{ radius.collateralCount|number_format }}</div>
+                    <div class="nuke-l">{{ "left referencing"|t('nuke') }}</div>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if radius.warnings is not empty %}
+            <ul class="nuke-warnings">
+                {% for warning in radius.warnings %}
+                    <li>{{ warning }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <div class="flex flex-nowrap" style="gap: 32px; align-items: flex-start;">
+            <div style="flex: 1 1 0; min-width: 0;">
+                <h3>{{ "A sample of what matched"|t('nuke') }}</h3>
+                <ul class="nuke-sample">
+                    {% for item in radius.sample %}
+                        <li>
+                            {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                            {% else %}{{ item.title }}{% endif %}
+                            {% if item.status %}<span class="light"> — {{ item.status }}</span>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% if radius.elements > radius.sample|length %}
+                    <p class="nuke-sub">{{ "…and {n} more."|t('nuke', { n: (radius.elements - radius.sample|length)|number_format }) }}</p>
+                {% endif %}
+            </div>
+
+            {% if radius.collateral is not empty %}
+                <div style="flex: 1 1 0; min-width: 0;">
+                    <h3>{{ "These will lose a reference"|t('nuke') }}</h3>
+                    <ul class="nuke-sample">
+                        {% for item in radius.collateral %}
+                            <li>
+                                {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                                {% else %}{{ item.title }}{% endif %}
+                                <span class="light"> — {{ item.type }}, {{ "{n} relations"|t('nuke', { n: item.count }) }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    {% if radius.collateralCount > radius.collateral|length %}
+                        <p class="nuke-sub">{{ "…and {n} more."|t('nuke', { n: (radius.collateralCount - radius.collateral|length)|number_format }) }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <hr>
+
+        {% if settings.requireConfirmation %}
+            <div class="field">
+                <div class="heading">
+                    <label for="nuke-confirmation">{{ "Type “{phrase}” to arm the strike"|t('nuke', { phrase: confirmationPhrase }) }}</label>
+                </div>
+                <div class="input">
+                    <input type="text"
+                           id="nuke-confirmation"
+                           name="confirmation"
+                           class="text fullwidth nuke-mono"
+                           autocomplete="off"
+                           spellcheck="false"
+                           data-phrase="{{ confirmationPhrase }}">
+                </div>
+            </div>
+        {% endif %}
+
+        <button type="submit" id="nuke-fire" class="btn submit{{ settings.requireConfirmation ? ' disabled' : '' }}"{{ settings.requireConfirmation ? ' disabled' : '' }}>
+            {% if target.queue %}
+                {{ "Queue the strike"|t('nuke') }}
+            {% elseif target.hardDelete %}
+                {{ "Delete {n} things permanently"|t('nuke', { n: radius.total()|number_format }) }}
+            {% else %}
+                {{ "Delete {n} things"|t('nuke', { n: radius.total()|number_format }) }}
+            {% endif %}
+        </button>
+    {% endif %}
+</div>

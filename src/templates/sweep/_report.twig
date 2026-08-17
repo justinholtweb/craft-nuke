@@ -1,0 +1,61 @@
+{# One sweep's results, in either mode. `dryRun` decides which number is the interesting one. #}
+<div class="nuke-panel">
+    <h2>{{ dryRun ? "What a sweep would remove"|t('nuke') : "What the sweep removed"|t('nuke') }}</h2>
+
+    {% set totalBytes = 0 %}
+    {% set total = 0 %}
+    {% for result in results %}
+        {% set totalBytes = totalBytes + result.bytes %}
+        {% set total = total + (dryRun ? result.found : result.removed) %}
+    {% endfor %}
+
+    <div class="nuke-tally">
+        <div>
+            <div class="nuke-n">{{ total|number_format }}</div>
+            <div class="nuke-l">{{ dryRun ? "would be removed"|t('nuke') : "removed"|t('nuke') }}</div>
+        </div>
+        {% if totalBytes %}
+            <div>
+                <div class="nuke-n">{{ totalBytes|filesize }}</div>
+                <div class="nuke-l">{{ dryRun ? "would be reclaimed"|t('nuke') : "reclaimed"|t('nuke') }}</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ "Task"|t('nuke') }}</th>
+                <th class="thin">{{ dryRun ? "Found"|t('nuke') : "Removed"|t('nuke') }}</th>
+                <th class="thin">{{ "Size"|t('nuke') }}</th>
+                <th>{{ "Notes"|t('nuke') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+                {% set n = dryRun ? result.found : result.removed %}
+                <tr>
+                    <td>
+                        {{ result.label }}
+                        <span class="light nuke-mono"> {{ result.handle }}</span>
+                    </td>
+                    <td class="thin">
+                        {% if result.failed %}<span class="error">{{ "failed"|t('nuke') }}</span>
+                        {% elseif result.skipped %}<span class="light">—</span>
+                        {% elseif result.ran %}<span class="light">{{ "ran"|t('nuke') }}</span>
+                        {% else %}{{ n|number_format }}{% endif %}
+                    </td>
+                    <td class="thin">{{ result.bytes ? result.bytes|filesize : '' }}</td>
+                    <td>
+                        {% if result.message %}<span class="{{ result.failed ? 'error' : 'light' }}">{{ result.message }}</span>{% endif %}
+                        {% if result.sample is not empty %}
+                            <ul class="nuke-sample">
+                                {% for line in result.sample %}<li>{{ line }}</li>{% endfor %}
+                            </ul>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,137 @@
+{# Small enough to inline. An asset bundle here would mean remembering to clear the CP resource
+   cache every time a rule changed, for about a hundred lines of CSS. #}
+{% css %}
+    .nuke-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    .nuke-card {
+        background: var(--gray-050, #f3f7fc);
+        border: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+        border-radius: var(--large-border-radius, 8px);
+        padding: 14px 16px;
+    }
+    .nuke-card h4 {
+        margin: 0 0 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--medium-text-color, #606d7b);
+    }
+    .nuke-figure {
+        font-size: 26px;
+        line-height: 1.15;
+        font-weight: 500;
+    }
+    .nuke-sub {
+        font-size: 12px;
+        color: var(--medium-text-color, #606d7b);
+    }
+    .nuke-panel {
+        border: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+        border-radius: var(--large-border-radius, 8px);
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        background: var(--white, #fff);
+    }
+    .nuke-panel > h2:first-child { margin-top: 0; }
+    .nuke-danger {
+        border-color: var(--error-color, #cf1124);
+        background: color-mix(in srgb, var(--error-color, #cf1124) 5%, transparent);
+    }
+    .nuke-warnings {
+        margin: 0 0 16px;
+        padding: 0;
+        list-style: none;
+    }
+    .nuke-warnings li {
+        position: relative;
+        padding: 6px 0 6px 26px;
+        font-size: 13px;
+        line-height: 1.45;
+    }
+    .nuke-warnings li::before {
+        content: '⚠';
+        position: absolute;
+        left: 4px;
+        top: 5px;
+        color: var(--pending-color, #ff9a00);
+    }
+    .nuke-warnings li.nuke-error::before {
+        content: '✕';
+        color: var(--error-color, #cf1124);
+    }
+    .nuke-tally {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px 20px;
+        margin: 0 0 18px;
+    }
+    .nuke-tally div {
+        border-left: 3px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+        padding-left: 10px;
+    }
+    .nuke-tally .nuke-n {
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1.2;
+    }
+    .nuke-tally .nuke-l {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--medium-text-color, #606d7b);
+    }
+    .nuke-tally .nuke-hot { border-left-color: var(--error-color, #cf1124); }
+    .nuke-sample {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 13px;
+    }
+    .nuke-sample li {
+        padding: 3px 0;
+        border-bottom: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.06));
+    }
+    .nuke-sample li:last-child { border-bottom: 0; }
+    .nuke-mono {
+        font-family: var(--mono-font, 'SFMono-Regular', Consolas, monospace);
+        font-size: 12px;
+        word-break: break-all;
+    }
+    .nuke-sweeper {
+        border-bottom: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+        padding: 12px 0;
+    }
+    .nuke-sweeper:last-child { border-bottom: 0; }
+    .nuke-sweeper .nuke-name { font-weight: 500; }
+    .nuke-sweeper .nuke-desc {
+        font-size: 12px;
+        color: var(--medium-text-color, #606d7b);
+        margin-top: 2px;
+        max-width: 68ch;
+    }
+    .nuke-sweeper-config {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 10px;
+        padding-left: 2px;
+    }
+    .nuke-sweeper-config .field { margin: 0; }
+    .nuke-group-heading {
+        margin: 24px 0 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--medium-text-color, #606d7b);
+    }
+    .nuke-quiet { color: var(--medium-text-color, #606d7b); }
+    .nuke-armed { animation: nuke-pulse 1.6s ease-in-out infinite; }
+    @keyframes nuke-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(207, 17, 36, 0.35); }
+        50% { box-shadow: 0 0 0 6px rgba(207, 17, 36, 0); }
+    }
+{% endcss %}

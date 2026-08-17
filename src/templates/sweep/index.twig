@@ -1,0 +1,99 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Sweep"|t('nuke') %}
+{% set selectedSubnavItem = 'sweep' %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    <form id="nuke-sweep" method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        {{ actionInput('nuke/sweep/run') }}
+
+        <div class="nuke-panel">
+            <h2>{{ "Housekeeping"|t('nuke') }}</h2>
+            <p class="nuke-sub">
+                {{ "Tick what to include, then scan to see what would go. Everything ticked here is switched on in settings; anything you untick is skipped for this run only."|t('nuke') }}
+                {% if lastSweep %}
+                    {{ "Last swept {when}, removing {n}."|t('nuke', {
+                        when: lastSweep.dateCreated|datetime('short'),
+                        n: lastSweep.removed|number_format,
+                    }) }}
+                {% endif %}
+            </p>
+
+            {% for group, groupSweepers in byGroup %}
+                <h3 class="nuke-group-heading">{{ groupLabels[group] ?? group }}</h3>
+
+                {% for handle, sweeper in groupSweepers %}
+                    {% set config = sweepers.configFor(sweeper) %}
+                    {% set available = sweeper.isAvailable() %}
+                    <div class="nuke-sweeper">
+                        <label style="display: flex; gap: 10px; align-items: flex-start;">
+                            <input type="checkbox"
+                                   name="handles[]"
+                                   value="{{ handle }}"
+                                   {% if config.enabled and available %}checked{% endif %}
+                                   {% if not available %}disabled{% endif %}>
+                            <span>
+                                <span class="nuke-name">{{ sweeper.label() }}</span>
+                                {% if not available %}
+                                    <span class="light"> — {{ "not applicable here"|t('nuke') }}</span>
+                                {% elseif not config.enabled %}
+                                    <span class="light"> — {{ "switched off in settings"|t('nuke') }}</span>
+                                {% endif %}
+                                <span class="nuke-desc">{{ sweeper.description() }}</span>
+                            </span>
+                        </label>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div class="nuke-panel">
+            {{ forms.lightswitchField({
+                label: "Run in the background"|t('nuke'),
+                name: 'queue',
+                on: false,
+                instructions: "Recommended on a large site — some of these read every row in a table."|t('nuke'),
+            }) }}
+
+            <button type="button" id="nuke-scan" class="btn">{{ "Scan"|t('nuke') }}</button>
+            <button type="submit" class="btn submit">{{ "Sweep"|t('nuke') }}</button>
+        </div>
+
+        <div id="nuke-sweep-report"></div>
+    </form>
+{% endblock %}
+
+{% js %}
+(function() {
+    var form = document.getElementById('nuke-sweep');
+    var button = document.getElementById('nuke-scan');
+    var panel = document.getElementById('nuke-sweep-report');
+    if (!form || !button) return;
+
+    button.addEventListener('click', function() {
+        button.classList.add('loading');
+        panel.innerHTML = '';
+
+        var data = new FormData(form);
+        data.set('action', 'nuke/sweep/scan');
+
+        fetch(Craft.getActionUrl('nuke/sweep/scan'), {
+            method: 'POST',
+            body: data,
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(json) { panel.innerHTML = json.html; })
+            .catch(function() {
+                panel.innerHTML = '<div class="nuke-panel"><p class="error">' +
+                    Craft.t('nuke', 'The scan failed.') + '</p></div>';
+            })
+            .finally(function() { button.classList.remove('loading'); });
+    });
+})();
+{% endjs %}

@@ -1,0 +1,43 @@
+{% include "nuke/_email/_style" %}
+
+<div style="{{ bodyStyle }}">
+    <h2 style="margin: 0 0 4px;">{{ "Housekeeping sweep"|t('nuke') }}</h2>
+    <p style="{{ mutedStyle }} margin: 0 0 20px;">
+        {{ run ? run.dateCreated|datetime('long') : '' }}
+        {% if run and run.scheduled %} — {{ "scheduled"|t('nuke') }}{% endif %}
+    </p>
+
+    <p style="margin: 0 0 20px; font-size: 18px;">
+        <strong>{{ removed|number_format }}</strong> {{ "things removed"|t('nuke') }}{% if failed %},
+        <strong style="color: #cf1124;">{{ failed }}</strong> {{ "tasks failed"|t('nuke') }}{% endif %}.
+    </p>
+
+    <table cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th style="{{ thStyle }}">{{ "Task"|t('nuke') }}</th>
+                <th style="{{ thStyle }} text-align: right;">{{ "Removed"|t('nuke') }}</th>
+                <th style="{{ thStyle }} text-align: right;">{{ "Size"|t('nuke') }}</th>
+                <th style="{{ thStyle }}">{{ "Notes"|t('nuke') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results if result.isNoteworthy() %}
+                <tr>
+                    <td style="{{ tdStyle }}">{{ result.label }}</td>
+                    <td style="{{ tdStyle }} text-align: right;">{{ result.removed|number_format }}</td>
+                    <td style="{{ tdStyle }} text-align: right;">{{ result.bytes ? result.bytes|filesize : '' }}</td>
+                    <td style="{{ tdStyle }} {{ result.failed ? 'color: #cf1124;' : mutedStyle }}">{{ result.message ?? '' }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4" style="{{ tdStyle }} {{ mutedStyle }}">{{ "Nothing needed removing."|t('nuke') }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if run %}
+        <p style="margin: 24px 0 0;">
+            <a href="{{ run.cpUrl }}" style="color: #0b69a3;">{{ "Full report"|t('nuke') }} &rarr;</a>
+        </p>
+    {% endif %}
+</div>

@@ -1,0 +1,142 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Nuke settings"|t('nuke') %}
+{% set selectedSubnavItem = 'settings' %}
+{% set fullPageForm = true %}
+
+{% set tabs = {
+    general: { label: "Guardrails"|t('nuke'), url: url('nuke/settings') },
+    sweepers: { label: "Sweepers"|t('nuke'), url: url('nuke/settings/sweepers') },
+    schedule: { label: "Schedule"|t('nuke'), url: url('nuke/settings/schedule') },
+} %}
+{% set selectedTab = 'general' %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    {{ actionInput('nuke/settings/save') }}
+    {{ redirectInput('nuke/settings') }}
+
+    <div class="nuke-panel">
+        <h2>{{ "Confirmation"|t('nuke') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: "Require a typed confirmation"|t('nuke'),
+            name: 'settings[requireConfirmation]',
+            on: settings.requireConfirmation,
+            instructions: "The point isn’t that typing is hard. It’s that it can’t happen by accident, by a double-click, or by a browser restoring a form."|t('nuke'),
+        }) }}
+
+        {{ forms.textField({
+            label: "Confirmation phrase"|t('nuke'),
+            name: 'settings[confirmationPhrase]',
+            value: settings.confirmationPhrase,
+            instructions: "`{scope}` becomes the handle of what’s being deleted, which makes the phrase specific rather than reflexive."|t('nuke'),
+        }) }}
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Before deleting"|t('nuke') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: "Back up the database first"|t('nuke'),
+            name: 'settings[backupBeforeStrike]',
+            on: settings.backupBeforeStrike,
+            instructions: "The default for new strikes. A backup that fails stops the strike."|t('nuke'),
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Delete permanently by default"|t('nuke'),
+            name: 'settings[hardDeleteByDefault]',
+            on: settings.hardDeleteByDefault,
+            instructions: "Off, and worth leaving off. Craft’s trash is the safety net that costs nothing."|t('nuke'),
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Delete relations by default"|t('nuke'),
+            name: 'settings[deleteRelations]',
+            on: settings.deleteRelations,
+            instructions: "Only affects non-permanent deletes. Keeping relations is what lets a restore restore the relationships too."|t('nuke'),
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Run garbage collection after a strike"|t('nuke'),
+            name: 'settings[runGcAfterStrike]',
+            on: settings.runGcAfterStrike,
+        }) }}
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Limits"|t('nuke') }}</h2>
+
+        {{ forms.textField({
+            label: "Most elements one strike may delete"|t('nuke'),
+            name: 'settings[maxElementsPerStrike]',
+            type: 'number',
+            size: 10,
+            value: settings.maxElementsPerStrike,
+            instructions: "A mis-scoped strike then fails loudly at the preview instead of quietly at 200,000 rows. 0 removes the ceiling."|t('nuke'),
+        }) }}
+
+        {{ forms.textField({
+            label: "Batch size"|t('nuke'),
+            name: 'settings[batchSize]',
+            type: 'number',
+            size: 6,
+            value: settings.batchSize,
+            instructions: "Each batch commits on its own, so a failure part-way leaves the finished batches done and recorded."|t('nuke'),
+        }) }}
+
+        {{ forms.textareaField({
+            label: "Protected scopes"|t('nuke'),
+            name: 'settings[protectedScopes]',
+            value: settings.protectedScopes|join("\n"),
+            rows: 4,
+            instructions: "One handle per line — sections, volumes, groups. No strike may ever target these, whatever the form says."|t('nuke'),
+        }) }}
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Awkward things"|t('nuke') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: "Allow user strikes"|t('nuke'),
+            name: 'settings[allowUserStrikes]',
+            on: settings.allowUserStrikes,
+            instructions: "Deleting users cascades into authorship, addresses and permissions, and content is never reassigned. Off unless you mean it."|t('nuke'),
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Allow strikes from the console"|t('nuke'),
+            name: 'settings[allowConsoleStrikes]',
+            on: settings.allowConsoleStrikes,
+            instructions: "The console defaults to a dry run and needs --force to skip its own prompt. Turn this off to make the control panel the only route."|t('nuke'),
+        }) }}
+    </div>
+
+    <div class="nuke-panel">
+        <h2>{{ "Records"|t('nuke') }}</h2>
+
+        {{ forms.textField({
+            label: "Runs to keep"|t('nuke'),
+            name: 'settings[retainRuns]',
+            type: 'number',
+            size: 6,
+            value: settings.retainRuns,
+        }) }}
+
+        {{ forms.selectField({
+            label: "Log level"|t('nuke'),
+            name: 'settings[logLevel]',
+            value: settings.logLevel,
+            options: [
+                { label: 'debug', value: 'debug' },
+                { label: 'info', value: 'info' },
+                { label: 'warning', value: 'warning' },
+                { label: 'error', value: 'error' },
+            ],
+            instructions: "Nuke writes storage/logs/nuke.log. It is the audit trail, and it survives the database it was deleting from — keep it at info."|t('nuke'),
+        }) }}
+    </div>
+{% endblock %}

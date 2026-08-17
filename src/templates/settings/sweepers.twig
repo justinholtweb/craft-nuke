@@ -1,0 +1,88 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Sweepers"|t('nuke') %}
+{% set selectedSubnavItem = 'settings' %}
+{% set fullPageForm = true %}
+
+{% set tabs = {
+    general: { label: "Guardrails"|t('nuke'), url: url('nuke/settings') },
+    sweepers: { label: "Sweepers"|t('nuke'), url: url('nuke/settings/sweepers') },
+    schedule: { label: "Schedule"|t('nuke'), url: url('nuke/settings/schedule') },
+} %}
+{% set selectedTab = 'sweepers' %}
+
+{% block content %}
+    {% include "nuke/_partials/style" %}
+
+    {{ actionInput('nuke/settings/save') }}
+    {{ redirectInput('nuke/settings/sweepers') }}
+    <input type="hidden" name="sweeperConfig[__present]" value="1">
+
+    <div class="nuke-panel">
+        <p class="nuke-sub">
+            {{ "Each task keeps its own window. Anything you never change keeps the default that shipped with it, so a task added in a later release arrives switched on with sensible settings rather than silently off."|t('nuke') }}
+        </p>
+    </div>
+
+    {% for group, groupSweepers in byGroup %}
+        <div class="nuke-panel">
+            <h2>{{ groupLabels[group] ?? group }}</h2>
+
+            {% for handle, sweeper in groupSweepers %}
+                {% set config = registry.configFor(sweeper) %}
+                {% set available = sweeper.isAvailable() %}
+
+                <div class="nuke-sweeper">
+                    {{ forms.lightswitchField({
+                        label: sweeper.label(),
+                        name: 'sweeperConfig[' ~ handle ~ '][enabled]',
+                        on: config.enabled ?? false,
+                        disabled: not available,
+                        instructions: available
+                            ? sweeper.description()
+                            : sweeper.description() ~ ' — ' ~ "not applicable on this site."|t('nuke'),
+                    }) }}
+
+                    {% if sweeper.configFields() is not empty %}
+                        <div class="nuke-sweeper-config">
+                            {% for field in sweeper.configFields() %}
+                                {% set name = 'sweeperConfig[' ~ handle ~ '][' ~ field.name ~ ']' %}
+                                {% set value = config[field.name] ?? null %}
+
+                                {% if field.type == 'boolean' %}
+                                    {{ forms.lightswitchField({
+                                        label: field.label,
+                                        name: name,
+                                        on: value,
+                                        instructions: field.instructions ?? null,
+                                    }) }}
+                                {% elseif field.type == 'select' %}
+                                    {{ forms.selectField({
+                                        label: field.label,
+                                        name: name,
+                                        value: value,
+                                        options: field.options ?? [],
+                                        instructions: field.instructions ?? null,
+                                    }) }}
+                                {% else %}
+                                    {{ forms.textField({
+                                        label: field.label,
+                                        name: name,
+                                        type: 'number',
+                                        size: 7,
+                                        min: field.min ?? 0,
+                                        max: field.max ?? null,
+                                        value: value,
+                                        instructions: field.instructions ?? null,
+                                        unit: field.type == 'days' ? "days"|t('nuke') : null,
+                                    }) }}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+{% endblock %}
