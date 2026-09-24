@@ -4,6 +4,8 @@ namespace justinholtweb\nuke\targets;
 
 use Craft;
 use craft\base\Element;
+use craft\db\Query;
+use craft\db\Table;
 use craft\elements\db\ElementQuery;
 use craft\elements\Entry;
 use craft\models\Section;
@@ -98,6 +100,56 @@ class EntryScope extends BaseScope
         }
 
         return $query;
+    }
+
+    public function authorLabel(): ?string
+    {
+        return Craft::t('nuke', 'Authors');
+    }
+
+    /**
+     * Any entry the users are *an* author of — co-authored entries included, and counted in the
+     * warnings so the operator sees them.
+     *
+     * Written against `entries_authors` directly rather than through `authorId()`, which Craft
+     * skips entirely on the Solo edition. There, the filter would vanish and the strike would
+     * match every entry in the target.
+     */
+    protected function applyAuthors(ElementQuery $query, array $userIds): void
+    {
+        $query->andWhere(['exists', (new Query())
+            ->from(['nuke_authors' => Table::ENTRIES_AUTHORS])
+            ->where('[[nuke_authors.entryId]] = [[entries.id]]')
+            ->andWhere(['nuke_authors.authorId' => $userIds]),
+        ]);
+    }
+
+    public function warnings(Target $target): array
+    {
+        $warnings = parent::warnings($target);
+        $authorIds = $target->ids('authorIds');
+
+        if ($authorIds === [] || $target->elementIds !== []) {
+            return $warnings;
+        }
+
+        // An entry with two authors is as much the other author's work, and deleting it takes
+        // that with it — which is easy to forget when the target reads "by jsmith".
+        $shared = (int)$this->query($target)
+            ->andWhere(['exists', (new Query())
+                ->from(['nuke_others' => Table::ENTRIES_AUTHORS])
+                ->where('[[nuke_others.entryId]] = [[entries.id]]')
+                ->andWhere(['not', ['nuke_others.authorId' => $authorIds]]),
+            ])
+            ->count();
+
+        if ($shared > 0) {
+            $warnings[] = Craft::t('nuke', '{n, plural, =1{One entry has} other{# entries have}} other authors too, and will be deleted along with everyone’s work on {n, plural, =1{it} other{them}}.', [
+                'n' => $shared,
+            ]);
+        }
+
+        return $warnings;
     }
 
     /**

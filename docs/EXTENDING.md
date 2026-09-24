@@ -69,7 +69,7 @@ Event::on(Scopes::class, Scopes::EVENT_REGISTER_SCOPES, function(RegisterScopesE
 });
 ```
 
-Three optional methods are worth knowing about:
+A few optional methods are worth knowing about:
 
 - **`statusOptions()`** — override it if your element type has statuses beyond enabled/disabled.
   This matters more than it looks: asking an element query for a status its type does not have
@@ -78,6 +78,10 @@ Three optional methods are worth knowing about:
   reasons to refuse. The asset scope uses it to say whether files leave the volume.
 - **`validate(Target $target, Settings $settings)`** — reasons the strike must not run. Call
   `parent::validate()` to keep the protected-scope check.
+- **`authorLabel()`** and **`applyAuthors(ElementQuery $query, array $userIds)`** — override both if
+  your elements have authors, and the strike screen's author filter appears for your scope. Leave
+  them alone and a target naming authors is refused for your scope rather than run without the
+  filter.
 - **`hasStructure(Target $target)`** — return true if your elements can be hierarchical, and the
   preview will spend a query counting the descendants that get re-parented rather than deleted.
 

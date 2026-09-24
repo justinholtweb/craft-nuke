@@ -1,5 +1,15 @@
 # Release Notes for Nuke
 
+## 5.1.0 - 2026-09-24
+
+### Added
+
+- Entry and asset strikes can be narrowed by author — entries a user is an author of, assets they
+  uploaded — including suspended, inactive and recently removed users still in Craft's trash.
+- `--authors` on `nuke/strike/fire`, taking usernames, emails or user IDs.
+- The preview counts co-authored entries, and says when a removed user's authorship will be lost to
+  garbage collection.
+
 ## 5.0.0 - 2026-08-17
 
 Initial release.

@@ -47,6 +47,18 @@ class Target extends Model
      */
     public array $siteIds = [];
 
+    /**
+     * @var int[] User IDs whose content this targets: entries they are an author of, assets they
+     *            uploaded. Empty means anyone's. Only scopes that know what authorship means for
+     *            their element type accept it — anywhere else it is refused rather than ignored,
+     *            because an ignored author filter is a strike on everybody's content.
+     *
+     * Users in Craft's trash can be named here. Soft-deleting a user leaves their authorship rows
+     * in place; it is only when garbage collection deletes the account for good that the rows
+     * cascade away and the content stops being findable by author.
+     */
+    public array $authorIds = [];
+
     // ---------------------------------------------------------------------
     // Filters
     // ---------------------------------------------------------------------
@@ -160,7 +172,7 @@ class Target extends Model
         return [
             [['scope'], 'required'],
             [['limit'], 'integer', 'min' => 1],
-            [['sourceIds', 'typeIds', 'siteIds', 'elementIds'], 'validateIdList'],
+            [['sourceIds', 'typeIds', 'siteIds', 'authorIds', 'elementIds'], 'validateIdList'],
             [['updatedBefore', 'createdBefore'], 'validateDate'],
         ];
     }

@@ -88,6 +88,38 @@
                     </div>
                 {% endfor %}
 
+                {% if authorScopes|length %}
+                    <div class="nuke-author-fields" data-scopes="{{ authorScopes|join(' ') }}"{% if target.scope not in authorScopes %} style="display:none"{% endif %}>
+                        {{ forms.elementSelectField({
+                            label: "Authored by"|t('nuke'),
+                            id: 'authorIds',
+                            name: 'authorIds',
+                            elementType: 'craft\\elements\\User',
+                            elements: selectedAuthors,
+                            criteria: { status: null },
+                            instructions: "Optional. Entries they are an author of, or assets they uploaded. Suspended, locked and inactive users can be chosen too."|t('nuke'),
+                        }) }}
+
+                        {% if removedUsers|length %}
+                            {% set removedOptions = [] %}
+                            {% for user in removedUsers %}
+                                {% set removedOptions = removedOptions|merge([{
+                                    label: user.friendlyName ~ ' (' ~ user.username ~ ') — ' ~ 'removed {date}'|t('nuke', { date: user.dateDeleted|date('short') }),
+                                    value: user.id,
+                                }]) %}
+                            {% endfor %}
+
+                            {{ forms.checkboxGroupField({
+                                label: "Recently removed users"|t('nuke'),
+                                name: 'removedAuthorIds',
+                                options: removedOptions,
+                                values: target.authorIds,
+                                instructions: "Users in Craft’s trash. Their authorship is on record until the trash is emptied; after that, their content can’t be found by author."|t('nuke'),
+                            }) }}
+                        {% endif %}
+                    </div>
+                {% endif %}
+
                 {% if siteOptions|length > 1 %}
                     {{ forms.checkboxGroupField({
                         label: "Sites"|t('nuke'),
@@ -225,7 +257,27 @@
                 field.disabled = !mine;
             });
         });
+
+        // Same rule for the author filter, which is shared by the scopes that have authors. A
+        // scope without them refuses the filter outright, so posting a leftover selection would
+        // turn a valid strike into a refused one for no visible reason.
+        form.querySelectorAll('.nuke-author-fields').forEach(function(el) {
+            var mine = el.getAttribute('data-scopes').split(' ').indexOf(scope) !== -1;
+            el.style.display = mine ? '' : 'none';
+            el.querySelectorAll('input, select').forEach(function(field) {
+                field.disabled = !mine;
+            });
+        });
     }
+
+    // The user picker adds and removes hidden inputs rather than firing a change event, so watch
+    // for those instead — otherwise choosing an author leaves the preview describing everyone's.
+    form.querySelectorAll('.nuke-author-fields .elementselect').forEach(function(el) {
+        new MutationObserver(function() {
+            showScopeFields();
+            schedule();
+        }).observe(el, { childList: true, subtree: true });
+    });
 
     function refresh() {
         if (inFlight) {

@@ -4,6 +4,7 @@ namespace justinholtweb\nuke\console\controllers;
 
 use Craft;
 use craft\console\Controller;
+use craft\elements\User;
 use craft\helpers\Console;
 use justinholtweb\nuke\models\Target;
 use justinholtweb\nuke\Plugin;
@@ -19,6 +20,7 @@ use yii\console\ExitCode;
  * ```
  * php craft nuke/strike/fire entries --sources=news --updated-before="-2 years"
  * php craft nuke/strike/fire entries --sources=news --updated-before="-2 years" --dry-run=0 --force
+ * php craft nuke/strike/fire entries --authors=jsmith
  * ```
  */
 class StrikeController extends Controller
@@ -39,6 +41,12 @@ class StrikeController extends Controller
 
     /** @var string|null Comma-separated site handles. */
     public ?string $sites = null;
+
+    /**
+     * @var string|null Comma-separated usernames, emails or user IDs whose content to target.
+     *                  Users in Craft's trash are found too.
+     */
+    public ?string $authors = null;
 
     /** @var string|null Element status to match. */
     public ?string $status = null;
@@ -73,7 +81,7 @@ class StrikeController extends Controller
     public function options($actionID): array
     {
         return array_merge(parent::options($actionID), [
-            'dryRun', 'force', 'sources', 'types', 'sites', 'status',
+            'dryRun', 'force', 'sources', 'types', 'sites', 'authors', 'status',
             'updatedBefore', 'createdBefore', 'limit', 'hard', 'backup',
             'purgeHistory', 'deleteRelations', 'gc', 'note',
         ]);
@@ -116,7 +124,14 @@ class StrikeController extends Controller
             return ExitCode::USAGE;
         }
 
+        $authorIds = $this->resolveAuthors();
+
+        if ($authorIds === null) {
+            return ExitCode::USAGE;
+        }
+
         $target = $this->buildTarget($scope);
+        $target->authorIds = $authorIds;
         $radius = $plugin->detonator->preview($target);
 
         $this->stdout("\n" . $radius->description . "\n\n", Console::FG_CYAN);
@@ -262,6 +277,47 @@ class StrikeController extends Controller
         }
 
         return $ids;
+    }
+
+    /**
+     * The users `--authors` names, or null if any of them can't be found.
+     *
+     * Unlike the other lists, an unknown name here is an error rather than something to drop. A
+     * typo that resolved to no authors would be no author filter at all — every author's content
+     * instead of one person's.
+     *
+     * @return int[]|null
+     */
+    private function resolveAuthors(): ?array
+    {
+        if ($this->authors === null || trim($this->authors) === '') {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach (array_filter(array_map('trim', explode(',', $this->authors))) as $name) {
+            $query = User::find()->status(null)->trashed(null);
+
+            if (ctype_digit($name)) {
+                $query->id((int)$name);
+            } elseif (str_contains($name, '@')) {
+                $query->email($name);
+            } else {
+                $query->username($name);
+            }
+
+            $user = $query->one();
+
+            if ($user === null) {
+                $this->stderr("No user matches “{$name}”. A permanently deleted user can’t be targeted — their authorship went with the account.\n", Console::FG_RED);
+                return null;
+            }
+
+            $ids[] = (int)$user->id;
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

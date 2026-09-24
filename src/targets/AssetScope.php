@@ -63,9 +63,19 @@ class AssetScope extends BaseScope
         return $query->volumeId($volumeIds);
     }
 
+    public function authorLabel(): ?string
+    {
+        return Craft::t('nuke', 'Uploaded by');
+    }
+
+    protected function applyAuthors(ElementQuery $query, array $userIds): void
+    {
+        $query->andWhere(['assets.uploaderId' => $userIds]);
+    }
+
     public function warnings(Target $target): array
     {
-        $warnings = [];
+        $warnings = parent::warnings($target);
 
         if ($target->hardDelete) {
             $warnings[] = Craft::t('nuke', 'Files will be deleted from their volumes, not just from Craft. Remote volumes have no trash.');

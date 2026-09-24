@@ -3,6 +3,7 @@
 namespace justinholtweb\nuke\controllers;
 
 use Craft;
+use craft\elements\User;
 use craft\web\Controller;
 use justinholtweb\nuke\models\Target;
 use justinholtweb\nuke\Plugin;
@@ -22,6 +23,9 @@ use yii\web\Response;
  */
 class StrikeController extends Controller
 {
+    /** How many removed users to offer. The trash empties itself, so this is rarely reached. */
+    private const REMOVED_USERS_SHOWN = 100;
+
     public function beforeAction($action): bool
     {
         if (!parent::beforeAction($action)) {
@@ -35,16 +39,7 @@ class StrikeController extends Controller
 
     public function actionIndex(): Response
     {
-        $plugin = Plugin::getInstance();
-
-        return $this->renderTemplate('nuke/strike/index', [
-            'scopes' => $plugin->scopes->available(),
-            'target' => new Target(),
-            'settings' => $plugin->getSettings(),
-            'isPro' => $plugin->isPro(),
-            'canHardDelete' => Craft::$app->getUser()->checkPermission(Plugin::PERMISSION_HARD_DELETE),
-            'sites' => Craft::$app->getSites()->getAllSites(),
-        ]);
+        return $this->renderForm(new Target());
     }
 
     /**
@@ -144,6 +139,13 @@ class StrikeController extends Controller
         $target->sourceIds = $this->idList($request->getBodyParam('sourceIds'));
         $target->typeIds = $this->idList($request->getBodyParam('typeIds'));
         $target->siteIds = $this->idList($request->getBodyParam('siteIds'));
+        // Two fields feed one list: the user picker and the checkboxes for removed users. They
+        // can't share a name — each posts its own empty placeholder, and whichever came last
+        // would blank the other.
+        $target->authorIds = array_values(array_unique(array_merge(
+            $this->idList($request->getBodyParam('authorIds')),
+            $this->idList($request->getBodyParam('removedAuthorIds')),
+        )));
         $target->elementIds = $this->idList($request->getBodyParam('elementIds'));
 
         $target->status = (string)$request->getBodyParam('status', Target::STATUS_ANY);
@@ -197,11 +199,38 @@ class StrikeController extends Controller
     {
         $this->setFailFlash($message);
 
+        return $this->renderForm($target);
+    }
+
+    private function renderForm(Target $target): Response
+    {
+        $plugin = Plugin::getInstance();
+        $scopes = $plugin->scopes->available();
+
+        // Live users go through Craft's own user picker; removed ones can't, because element
+        // selectors never show the trash. They get a list of their own, and the picker is only
+        // handed back the selections it is able to display.
+        $removedUsers = User::find()
+            ->trashed(true)
+            ->status(null)
+            ->orderBy(['elements.dateDeleted' => SORT_DESC])
+            ->limit(self::REMOVED_USERS_SHOWN)
+            ->all();
+
+        $authorIds = $target->ids('authorIds');
+        $selectedAuthors = $authorIds === [] ? [] : User::find()
+            ->id($authorIds)
+            ->status(null)
+            ->all();
+
         return $this->renderTemplate('nuke/strike/index', [
-            'scopes' => Plugin::getInstance()->scopes->available(),
+            'scopes' => $scopes,
+            'authorScopes' => array_keys(array_filter($scopes, fn($scope) => $plugin->scopes->acceptsAuthors($scope))),
+            'selectedAuthors' => $selectedAuthors,
+            'removedUsers' => $removedUsers,
             'target' => $target,
-            'settings' => Plugin::getInstance()->getSettings(),
-            'isPro' => Plugin::getInstance()->isPro(),
+            'settings' => $plugin->getSettings(),
+            'isPro' => $plugin->isPro(),
             'canHardDelete' => Craft::$app->getUser()->checkPermission(Plugin::PERMISSION_HARD_DELETE),
             'sites' => Craft::$app->getSites()->getAllSites(),
         ]);

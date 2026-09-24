@@ -5,9 +5,11 @@ namespace justinholtweb\nuke\targets;
 use Craft;
 use craft\base\Element;
 use craft\elements\db\ElementQuery;
+use craft\elements\User;
 use craft\helpers\Db;
 use justinholtweb\nuke\models\Settings;
 use justinholtweb\nuke\models\Target;
+use LogicException;
 use yii\base\BaseObject;
 
 /**
@@ -33,6 +35,29 @@ abstract class BaseScope extends BaseObject implements ScopeInterface
     public function typeOptions(array $sourceIds = []): array
     {
         return [];
+    }
+
+    /**
+     * What "authored by" is called for this element type, or null if it has no such idea.
+     *
+     * Null is the default and it is a refusal, not a no-op: a target that names authors on a
+     * scope that can't filter by them is turned away by the detonator, since quietly dropping the
+     * filter would aim the strike at everyone's content.
+     */
+    public function authorLabel(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Narrows the query to elements the given users authored. Scopes that return a label from
+     * {@see authorLabel()} must override this.
+     *
+     * @param int[] $userIds
+     */
+    protected function applyAuthors(ElementQuery $query, array $userIds): void
+    {
+        throw new LogicException(static::class . ' has an author label but does not apply authors.');
     }
 
     public function statusOptions(): array
@@ -63,6 +88,10 @@ abstract class BaseScope extends BaseObject implements ScopeInterface
         $this->applyStatus($query, $target);
         $this->applySites($query, $target);
         $this->applyDates($query, $target);
+
+        if ($authorIds = $target->ids('authorIds')) {
+            $this->applyAuthors($query, $authorIds);
+        }
 
         if ($target->search !== null && trim($target->search) !== '') {
             $query->search(trim($target->search));
@@ -174,6 +203,17 @@ abstract class BaseScope extends BaseObject implements ScopeInterface
             $parts[] = Craft::t('nuke', 'created before {date}', ['date' => $target->createdBefore]);
         }
 
+        if ($target->ids('authorIds') !== []) {
+            $parts[] = Craft::t('nuke', 'by {users}', [
+                'users' => implode(', ', array_map(
+                    fn(User $user) => $user->trashed
+                        ? Craft::t('nuke', '{username} (removed)', ['username' => $user->username])
+                        : $user->username,
+                    $this->authors($target),
+                )) ?: '?',
+            ]);
+        }
+
         if ($target->search) {
             $parts[] = Craft::t('nuke', 'matching “{search}”', ['search' => $target->search]);
         }
@@ -209,7 +249,34 @@ abstract class BaseScope extends BaseObject implements ScopeInterface
 
     public function warnings(Target $target): array
     {
-        return [];
+        $warnings = [];
+
+        if ($target->elementIds !== []) {
+            return $warnings;
+        }
+
+        $softDeleteDuration = (int)Craft::$app->getConfig()->getGeneral()->softDeleteDuration;
+
+        foreach ($this->authors($target) as $user) {
+            if (!$user->trashed) {
+                continue;
+            }
+
+            // The window matters because it closes without anyone doing anything: garbage
+            // collection deletes the account, the authorship rows cascade with it, and whatever
+            // this strike didn't catch is left with no author to find it by.
+            $warnings[] = $softDeleteDuration > 0 && $user->dateDeleted
+                ? Craft::t('nuke', '“{username}” was removed on {date}. Craft deletes the account for good after {purge}, and their content can’t be matched by author after that.', [
+                    'username' => $user->username,
+                    'date' => Craft::$app->getFormatter()->asDate($user->dateDeleted, 'short'),
+                    'purge' => Craft::$app->getFormatter()->asDate($user->dateDeleted->getTimestamp() + $softDeleteDuration, 'short'),
+                ])
+                : Craft::t('nuke', '“{username}” has been removed, and is still in Craft’s trash.', [
+                    'username' => $user->username,
+                ]);
+        }
+
+        return $warnings;
     }
 
     public function hasStructure(Target $target): bool
@@ -229,7 +296,42 @@ abstract class BaseScope extends BaseObject implements ScopeInterface
             }
         }
 
+        $authorIds = $target->ids('authorIds');
+
+        if ($authorIds !== [] && $target->elementIds === []) {
+            $found = array_map(fn(User $user) => (int)$user->id, $this->authors($target));
+
+            foreach (array_diff($authorIds, $found) as $missingId) {
+                // A permanently deleted user's authorship rows went with the account, so there is
+                // nothing left to match on. Matching nothing would be harmless; saying why is kinder.
+                $errors[] = Craft::t('nuke', 'User #{id} no longer exists. Once an account is permanently deleted, Craft no longer records what it authored.', [
+                    'id' => $missingId,
+                ]);
+            }
+        }
+
         return $errors;
+    }
+
+    /**
+     * The users a target names as authors, including ones sitting in the trash.
+     *
+     * @return User[]
+     */
+    protected function authors(Target $target): array
+    {
+        $ids = $target->ids('authorIds');
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return User::find()
+            ->id($ids)
+            ->status(null)
+            ->trashed(null)
+            ->limit(null)
+            ->all();
     }
 
     /**

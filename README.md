@@ -37,6 +37,13 @@ A plugin that deletes things in bulk should arrive configured to hesitate.
 Entries, categories, tags, assets and users. Each narrowed by source (section, volume, group), entry
 type, site, status, age, search, or an explicit list of IDs.
 
+Entries and assets can also be narrowed by **author** — the entries someone is an author of, the
+assets they uploaded. That includes suspended and inactive users, and users who have been removed
+but are still in Craft's trash: soft-deleting a user leaves their authorship on record until
+garbage collection deletes the account for good, so there is a window in which "everything this
+person wrote" can still be found. The preview says when that window closes, and counts entries
+that have other authors too, since deleting those takes the other authors' work with them.
+
 Other element types can register themselves through
 `Scopes::EVENT_REGISTER_SCOPES` — see [docs/EXTENDING.md](docs/EXTENDING.md).
 
@@ -83,6 +90,10 @@ php craft nuke/strike/fire entries --sources=news --updated-before="-2 years"
 
 # Actually delete it.
 php craft nuke/strike/fire entries --sources=news --updated-before="-2 years" --dry-run=0 --force
+
+# Everything someone wrote, and everything they uploaded. Usernames, emails or IDs.
+php craft nuke/strike/fire entries --authors=jsmith
+php craft nuke/strike/fire assets --authors=jsmith
 
 # Housekeeping.
 php craft nuke/sweep/list

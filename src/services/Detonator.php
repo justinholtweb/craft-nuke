@@ -18,6 +18,7 @@ use justinholtweb\nuke\Plugin;
 use justinholtweb\nuke\records\RunRecord;
 use justinholtweb\nuke\targets\ScopeInterface;
 use Throwable;
+use yii\base\InvalidArgumentException;
 
 /**
  * Runs strikes, and previews them.
@@ -71,6 +72,10 @@ class Detonator extends Component
 
         foreach ($scope->validate($target, $settings) as $error) {
             $radius->refuse($error);
+        }
+
+        if ($this->authorsIgnoredBy($scope, $target)) {
+            $radius->refuse(Craft::t('nuke', '{things} can’t be filtered by author.', ['things' => $scope->label()]));
         }
 
         foreach ($scope->warnings($target) as $warning) {
@@ -360,6 +365,14 @@ class Detonator extends Component
     {
         $scope = Plugin::getInstance()->scopes->get($target->scope);
         $settings = $this->settings();
+
+        // The preview refuses this with a sentence; this is the backstop for the paths that fire
+        // without one — a queued job, a direct call — where the alternative is deleting every
+        // author's content instead of one author's.
+        if ($this->authorsIgnoredBy($scope, $target)) {
+            throw new InvalidArgumentException("The “{$target->scope}” scope can’t filter by author.");
+        }
+
         $query = $scope->query($target);
 
         // One over the ceiling, so the preview can tell "exactly at the limit" from "past it"
@@ -670,6 +683,16 @@ class Detonator extends Component
         }
 
         return $warnings;
+    }
+
+    /**
+     * Whether the target names authors that the scope would silently leave out of its query.
+     */
+    private function authorsIgnoredBy(ScopeInterface $scope, Target $target): bool
+    {
+        return $target->ids('authorIds') !== []
+            && $target->elementIds === []
+            && !Plugin::getInstance()->scopes->acceptsAuthors($scope);
     }
 
     private function settings(): Settings
