@@ -59,6 +59,7 @@ class Scopes extends Component
                 $scope = Craft::createObject($scope);
             }
 
+            // @phpstan-ignore instanceof.alwaysTrue (the event's phpdoc doesn't bind third-party listeners)
             if (!$scope instanceof ScopeInterface) {
                 continue;
             }
@@ -105,6 +106,39 @@ class Scopes extends Component
     public function acceptsAuthors(ScopeInterface $scope): bool
     {
         return $scope instanceof BaseScope && $scope->authorLabel() !== null;
+    }
+
+    /**
+     * Why this user may not fire this target, in Craft's own delete permissions.
+     *
+     * A scope that implements the interface directly declares no permissions, so only an admin
+     * may aim it — the same rule {@see acceptsAuthors()} applies to author filtering.
+     *
+     * @return string[]
+     */
+    public function permissionErrors(Target $target, User $user): array
+    {
+        $scope = $this->get($target->scope);
+
+        if ($scope instanceof BaseScope) {
+            return $scope->permissionErrors($target, $user);
+        }
+
+        return $user->admin ? [] : [Craft::t('nuke', 'Only an admin can strike {things}.', ['things' => strtolower($scope->label())])];
+    }
+
+    /**
+     * The sources this user may target in full, for the source picker.
+     *
+     * @return array<int, array{label: string, value: int, handle: string}>
+     */
+    public function sourceOptionsFor(ScopeInterface $scope, User $user): array
+    {
+        if ($scope instanceof BaseScope) {
+            return $scope->sourceOptionsFor($user);
+        }
+
+        return $user->admin ? $scope->sourceOptions() : [];
     }
 
     /**

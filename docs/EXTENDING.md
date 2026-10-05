@@ -82,6 +82,12 @@ A few optional methods are worth knowing about:
   your elements have authors, and the strike screen's author filter appears for your scope. Leave
   them alone and a target naming authors is refused for your scope rather than run without the
   filter.
+- **`deletePermissions(int $sourceId)`** and **`sourceColumn()`** — the Craft permissions a
+  non-admin needs to delete *everything* in one of your sources (`[]` for none, `null` for an
+  unknown source), and the column holding an element's source, e.g. `products.typeId`. Leave
+  `deletePermissions()` alone and only admins can strike your scope; leave `sourceColumn()` alone
+  and only admins can strike it by element ID. A scope that implements `ScopeInterface` directly
+  is admin-only.
 - **`hasStructure(Target $target)`** — return true if your elements can be hierarchical, and the
   preview will spend a query counting the descendants that get re-parented rather than deleted.
 

@@ -3,7 +3,12 @@
 
 {% set title = "Nuke settings"|t('nuke') %}
 {% set selectedSubnavItem = 'settings' %}
-{% set fullPageForm = true %}
+{# Settings live in project config: with allowAdminChanges off they can be read, not saved. #}
+{% set readOnly = not craft.app.config.general.allowAdminChanges %}
+{% set fullPageForm = not readOnly %}
+{% if readOnly %}
+    {% set contentNotice = readOnlyNotice() %}
+{% endif %}
 
 {% set tabs = {
     general: { label: "Guardrails"|t('nuke'), url: url('nuke/settings') },
@@ -13,6 +18,7 @@
 {% set selectedTab = 'general' %}
 
 {% block content %}
+    {% if readOnly %}<fieldset disabled>{% endif %}
     {% include "nuke/_partials/style" %}
 
     {{ actionInput('nuke/settings/save') }}
@@ -139,4 +145,5 @@
             instructions: "Nuke writes storage/logs/nuke.log. It is the audit trail, and it survives the database it was deleting from — keep it at info."|t('nuke'),
         }) }}
     </div>
+    {% if readOnly %}</fieldset>{% endif %}
 {% endblock %}

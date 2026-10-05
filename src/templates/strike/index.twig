@@ -38,7 +38,7 @@
 
                 {% for handle, scope in scopes %}
                     {% set sourceOptions = [] %}
-                    {% for option in scope.sourceOptions() %}
+                    {% for option in allowedSources[handle] ?? [] %}
                         {% set sourceOptions = sourceOptions|merge([{
                             label: option.label ~ ' (' ~ option.handle ~ ')',
                             value: option.value,
@@ -52,12 +52,16 @@
                                 name: 'sourceIds',
                                 options: sourceOptions,
                                 values: target.sourceIds,
-                                instructions: "Leave every box unticked to target all of them."|t('nuke'),
+                                instructions: currentUser.admin
+                                    ? "Leave every box unticked to target all of them."|t('nuke')
+                                    : "Only the ones you can delete everything in are listed."|t('nuke'),
                             }) }}
                         {% endif %}
 
                         {% set typeOptions = [] %}
-                        {% for option in scope.typeOptions() %}
+                        {# Types from the sources offered above, so a type doesn't lead to a section the user can't pick. #}
+                        {% set allowedIds = (allowedSources[handle] ?? [])|column('value') %}
+                        {% for option in currentUser.admin ? scope.typeOptions() : (allowedIds ? scope.typeOptions(allowedIds) : []) %}
                             {% set typeOptions = typeOptions|merge([{
                                 label: option.label ~ ' (' ~ option.handle ~ ')',
                                 value: option.value,

@@ -102,6 +102,18 @@ class EntryScope extends BaseScope
         return $query;
     }
 
+    public function deletePermissions(int $sourceId): ?array
+    {
+        $section = Craft::$app->getEntries()->getSectionById($sourceId);
+
+        return $section ? ["deleteEntries:$section->uid", "deletePeerEntries:$section->uid"] : null;
+    }
+
+    protected function sourceColumn(): ?string
+    {
+        return 'entries.sectionId';
+    }
+
     public function authorLabel(): ?string
     {
         return Craft::t('nuke', 'Authors');

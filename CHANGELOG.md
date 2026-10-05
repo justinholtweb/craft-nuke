@@ -1,5 +1,28 @@
 # Release Notes for Nuke
 
+## 5.1.1 - 2026-10-05
+
+> {warning} `nuke:strike` no longer reaches everything on the site. A non-admin can now strike
+> only sections, volumes and category groups where they hold Craft's own delete permissions —
+> **Delete entries** *and* **Delete other authors' entries**, **Delete assets** *and* **Delete
+> other people's assets**, **Delete categories**. Someone who relied on `nuke:strike` alone needs
+> those permissions for the sources they clean up, or an admin to run the strike.
+
+### Security
+- Nuke checked only its own permission, so a user granted `nuke:strike` to clean up one section
+  could aim it at any section, volume or category group on the site, including ones they couldn't
+  see. The strike screen now offers non-admins only the sources they may delete everything in, and
+  preview and fire refuse the rest. An explicit list of element IDs, which skips the source filter,
+  is checked against the sources those elements are actually in. Targeting every source at once,
+  and nested entries by ID, are admin-only. Tags need nothing extra: Craft lets anyone delete a
+  tag. Console strikes are unchanged, and a queued strike is checked when it's queued.
+
+### Fixed
+- With `allowAdminChanges` off, Nuke's settings screens returned 403 even to admins. They now show
+  read-only, with Craft's standard notice, and saving is refused.
+- Saving settings copied any `config/nuke.php` overrides into project config. Saves now start from
+  the settings stored in project config.
+
 ## 5.1.0 - 2026-09-24
 
 ### Added

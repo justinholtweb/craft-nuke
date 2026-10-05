@@ -3,7 +3,12 @@
 
 {% set title = "Schedule"|t('nuke') %}
 {% set selectedSubnavItem = 'settings' %}
-{% set fullPageForm = true %}
+{# Settings live in project config: with allowAdminChanges off they can be read, not saved. #}
+{% set readOnly = not craft.app.config.general.allowAdminChanges %}
+{% set fullPageForm = not readOnly %}
+{% if readOnly %}
+    {% set contentNotice = readOnlyNotice() %}
+{% endif %}
 
 {% set tabs = {
     general: { label: "Guardrails"|t('nuke'), url: url('nuke/settings') },
@@ -13,6 +18,7 @@
 {% set selectedTab = 'schedule' %}
 
 {% block content %}
+    {% if readOnly %}<fieldset disabled>{% endif %}
     {% include "nuke/_partials/style" %}
 
     {{ actionInput('nuke/settings/save') }}
@@ -134,4 +140,5 @@
             instructions: "A bulk deletion is precisely the event the rest of the team wants to hear about."|t('nuke'),
         }) }}
     </div>
+    {% if readOnly %}</fieldset>{% endif %}
 {% endblock %}

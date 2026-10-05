@@ -52,3 +52,20 @@ that things get deleted.
   `relations.sourceId` but has **no foreign key on `targetId`**, so a permanent delete would
   otherwise leave rows pointing at nothing.
 - The run ledger has the note, the backup path, and a preview that matches the outcome.
+
+## Security
+
+```bash
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-nuke/tests/integration/security.php
+```
+
+19 checks, mostly over HTTP: what a non-admin with `nuke:strike` can reach (Craft's own delete
+permissions per section, explicit element IDs, "all sources", the strike screen's pickers), the
+other scopes' permission mapping, and the settings screens with `allowAdminChanges` off. It builds
+three throwaway sections and removes them; a fire is only ever aimed at those.
+
+Teardown runs in a **fresh PHP process**. Once the web process has saved settings, the test's own
+copy of project config is out of date, and Craft refuses to write from it
+(`StaleResourceException` from `deleteSection()`), which used to kill the shutdown function before
+it restored anything.
+

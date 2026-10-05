@@ -3,6 +3,8 @@
 namespace justinholtweb\nuke\controllers;
 
 use Craft;
+use craft\helpers\ProjectConfig as ProjectConfigHelper;
+use craft\services\ProjectConfig;
 use craft\web\Controller;
 use justinholtweb\nuke\models\Settings;
 use justinholtweb\nuke\Plugin;
@@ -20,7 +22,9 @@ class SettingsController extends Controller
             return false;
         }
 
-        $this->requireAdmin();
+        // Admins can always read the settings. Saving writes project config, so actionSave()
+        // also needs allowAdminChanges; with it off the screens render read-only.
+        $this->requireAdmin(false);
 
         return true;
     }
@@ -68,10 +72,13 @@ class SettingsController extends Controller
     public function actionSave(): Response
     {
         $this->requirePostRequest();
+        $this->requireAdmin();
 
         $plugin = Plugin::getInstance();
-        /** @var Settings $settings */
-        $settings = $plugin->getSettings();
+        // Start from what project config holds, not getSettings(): that carries config/nuke.php
+        // overrides, which belong in that file and would otherwise be copied into project config.
+        $stored = Craft::$app->getProjectConfig()->get(ProjectConfig::PATH_PLUGINS . '.' . $plugin->handle . '.settings') ?? [];
+        $settings = new Settings(ProjectConfigHelper::unpackAssociativeArrays($stored));
         $posted = $this->request->getBodyParam('settings', []);
 
         if (!is_array($posted)) {

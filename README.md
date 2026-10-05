@@ -129,6 +129,20 @@ For cron, either let cron own the schedule:
 `nuke:view` deliberately does not include `nuke:strike`. Seeing what a deletion would do is a
 reasonable thing to grant widely; doing it is not.
 
+`nuke:strike` lets someone use Nuke, not delete anything on the site. A non-admin can only strike
+sources where Craft's own permissions already let them delete everything:
+
+| Scope | Craft permissions needed on each source |
+| --- | --- |
+| Entries | Delete entries, and Delete other authors' entries |
+| Assets | Delete assets, and Delete other people's assets |
+| Categories | Delete categories |
+| Tags | None (Craft lets anyone delete a tag) |
+| Users | Admin only |
+
+The strike screen only offers those sources. Aiming at every source at once, or at nested entries
+by ID, is admin-only. Settings are admin-only, and read-only where `allowAdminChanges` is off.
+
 ## Requirements
 
 Craft CMS 5.3 or later, PHP 8.2 or later. No runtime dependencies beyond Craft.

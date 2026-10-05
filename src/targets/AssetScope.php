@@ -63,6 +63,18 @@ class AssetScope extends BaseScope
         return $query->volumeId($volumeIds);
     }
 
+    public function deletePermissions(int $sourceId): ?array
+    {
+        $volume = Craft::$app->getVolumes()->getVolumeById($sourceId);
+
+        return $volume ? ["deleteAssets:$volume->uid", "deletePeerAssets:$volume->uid"] : null;
+    }
+
+    protected function sourceColumn(): ?string
+    {
+        return 'assets.volumeId';
+    }
+
     public function authorLabel(): ?string
     {
         return Craft::t('nuke', 'Uploaded by');

@@ -2,7 +2,7 @@
     "name": "justinholtweb/craft-nuke",
     "description": "Delete content in bulk — whole sections, drafts, revisions and relations — behind a dry run, a typed confirmation and a backup. Then keep the site clean with scheduled sweeps.",
     "type": "craft-plugin",
-    "version": "5.1.0",
+    "version": "5.1.1",
     "keywords": [
         "craft",
         "cms",
@@ -40,7 +40,8 @@
     "require-dev": {
         "craftcms/ecs": "dev-main",
         "craftcms/phpstan": "dev-main",
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "phpstan/phpstan": "^1.12 || ^2.2"
     },
     "autoload": {
         "psr-4": {

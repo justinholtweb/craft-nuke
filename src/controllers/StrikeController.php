@@ -52,7 +52,7 @@ class StrikeController extends Controller
 
         $target = $this->target();
         $plugin = Plugin::getInstance();
-        $radius = $plugin->detonator->preview($target);
+        $radius = $plugin->detonator->preview($target, $this->actingUser());
 
         return $this->asJson([
             'html' => $this->getView()->renderTemplate('nuke/strike/_radius', [
@@ -85,7 +85,7 @@ class StrikeController extends Controller
 
         // Previewed again here, server-side. The browser's copy is a suggestion; this is the
         // check, and it is the same code path the deletion itself will take.
-        $radius = $plugin->detonator->preview($target);
+        $radius = $plugin->detonator->preview($target, $this->actingUser());
 
         if (!$radius->canFire()) {
             return $this->failure(
@@ -125,6 +125,20 @@ class StrikeController extends Controller
         $this->setSuccessFlash(Craft::t('nuke', 'Done.'));
 
         return $this->redirect("nuke/runs/$runId");
+    }
+
+    /**
+     * The signed-in user, whose own Craft permissions bound what they can strike.
+     */
+    private function actingUser(): User
+    {
+        $user = Craft::$app->getUser()->getIdentity();
+
+        if (!$user instanceof User) {
+            throw new ForbiddenHttpException('You must be signed in to strike.');
+        }
+
+        return $user;
     }
 
     /**
@@ -223,8 +237,12 @@ class StrikeController extends Controller
             ->status(null)
             ->all();
 
+        $user = $this->actingUser();
+
         return $this->renderTemplate('nuke/strike/index', [
             'scopes' => $scopes,
+            // Only the sources this user may delete everything in; the preview refuses the rest.
+            'allowedSources' => array_map(fn($scope) => $plugin->scopes->sourceOptionsFor($scope, $user), $scopes),
             'authorScopes' => array_keys(array_filter($scopes, fn($scope) => $plugin->scopes->acceptsAuthors($scope))),
             'selectedAuthors' => $selectedAuthors,
             'removedUsers' => $removedUsers,

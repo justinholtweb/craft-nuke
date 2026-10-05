@@ -47,4 +47,18 @@ class TagScope extends BaseScope
 
         return $query;
     }
+
+    /**
+     * Craft lets anyone delete a tag (`Tag::canDelete()` is always true), so a tag group needs no
+     * permission beyond Nuke's own.
+     */
+    public function deletePermissions(int $sourceId): ?array
+    {
+        return Craft::$app->getTags()->getTagGroupById($sourceId) ? [] : null;
+    }
+
+    protected function sourceColumn(): ?string
+    {
+        return 'tags.groupId';
+    }
 }

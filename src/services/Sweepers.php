@@ -102,6 +102,7 @@ class Sweepers extends Component
                 $sweeper = Craft::createObject($sweeper);
             }
 
+            // @phpstan-ignore instanceof.alwaysTrue (the event's phpdoc doesn't bind third-party listeners)
             if (!$sweeper instanceof SweeperInterface) {
                 continue;
             }

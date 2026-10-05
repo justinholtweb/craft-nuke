@@ -49,6 +49,18 @@ class CategoryScope extends BaseScope
         return $query;
     }
 
+    public function deletePermissions(int $sourceId): ?array
+    {
+        $group = Craft::$app->getCategories()->getGroupById($sourceId);
+
+        return $group ? ["deleteCategories:$group->uid"] : null;
+    }
+
+    protected function sourceColumn(): ?string
+    {
+        return 'categories.groupId';
+    }
+
     public function hasStructure(Target $target): bool
     {
         return true;

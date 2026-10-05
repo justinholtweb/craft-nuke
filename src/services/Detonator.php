@@ -8,6 +8,7 @@ use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\db\Table;
 use craft\elements\Asset;
+use craft\elements\User;
 use craft\helpers\Db;
 use justinholtweb\nuke\events\StrikeEvent;
 use justinholtweb\nuke\models\BlastRadius;
@@ -55,8 +56,13 @@ class Detonator extends Component
 
     /**
      * Everything the strike would do, without doing any of it.
+     *
+     * @param User|null $user who is aiming it. The control panel passes the signed-in user, and
+     * the target is refused where they lack Craft's own delete permissions. Null skips that check:
+     * the console is trusted, and a queued strike was checked when it was queued — a queue run can
+     * be started by anybody's request, so checking there would check the wrong person.
      */
-    public function preview(Target $target): BlastRadius
+    public function preview(Target $target, ?User $user = null): BlastRadius
     {
         $started = microtime(true);
         $radius = new BlastRadius();
@@ -72,6 +78,12 @@ class Detonator extends Component
 
         foreach ($scope->validate($target, $settings) as $error) {
             $radius->refuse($error);
+        }
+
+        if ($user !== null) {
+            foreach (Plugin::getInstance()->scopes->permissionErrors($target, $user) as $error) {
+                $radius->refuse($error);
+            }
         }
 
         if ($this->authorsIgnoredBy($scope, $target)) {

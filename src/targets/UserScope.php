@@ -81,6 +81,19 @@ class UserScope extends BaseScope
         return $query;
     }
 
+    /**
+     * Users are admin-only, and validate() says so; there are no group permissions to check.
+     */
+    public function permissionErrors(Target $target, User $user): array
+    {
+        return [];
+    }
+
+    public function sourceOptionsFor(User $user): array
+    {
+        return $this->sourceOptions();
+    }
+
     public function validate(Target $target, Settings $settings): array
     {
         $errors = parent::validate($target, $settings);

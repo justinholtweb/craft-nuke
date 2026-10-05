@@ -314,6 +314,136 @@ abstract class BaseScope extends BaseObject implements ScopeInterface
     }
 
     /**
+     * Craft's own permissions a user needs to delete everything in one source — all of it, not
+     * just their own, because a strike takes everyone's. `[]` when Craft has none (tags), null when
+     * the source doesn't exist.
+     *
+     * @return string[]|null
+     */
+    public function deletePermissions(int $sourceId): ?array
+    {
+        return null;
+    }
+
+    /**
+     * The column holding an element's source, for working out which sources an explicit list of
+     * element IDs reaches. Null when the scope has no sources to check.
+     */
+    protected function sourceColumn(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Why this user may not fire this target, in Craft's own permission terms. Empty when they may.
+     *
+     * Nuke's own permission says someone may use Nuke; it says nothing about which content they may
+     * delete. Without this, "Strike" granted to clean up one section reached every section and
+     * volume on the site, including ones the user can't even see.
+     *
+     * @return string[]
+     */
+    public function permissionErrors(Target $target, User $user): array
+    {
+        if ($user->admin) {
+            return [];
+        }
+
+        if ($target->elementIds !== []) {
+            // An explicit list ignores the source filter, so check where the elements really are.
+            $column = $this->sourceColumn();
+
+            if ($column === null) {
+                return [Craft::t('nuke', 'Only an admin can delete specific {things} by ID.', ['things' => strtolower($this->label())])];
+            }
+
+            $sourceIds = $this->query($target)->select([$column])->distinct()->column();
+
+            if (in_array(null, $sourceIds, true)) {
+                return [Craft::t('nuke', 'Some of these {things} don’t belong to any {source}, so only an admin can delete them.', [
+                    'things' => strtolower($this->label()),
+                    'source' => strtolower($this->sourceLabel()),
+                ])];
+            }
+        } else {
+            $sourceIds = $target->ids('sourceIds');
+
+            if ($sourceIds === []) {
+                // "Everything" reaches content no source permission covers — nested entries in
+                // Matrix fields have no section at all — so only an admin may aim that wide.
+                return [Craft::t('nuke', 'Choose the {sources} to delete from. Only an admin can target all of them at once.', [
+                    'sources' => strtolower($this->sourceLabel()),
+                ])];
+            }
+        }
+
+        $denied = [];
+
+        foreach (array_unique(array_map('intval', $sourceIds)) as $sourceId) {
+            $permissions = $this->deletePermissions($sourceId);
+
+            if ($permissions === null) {
+                $denied[] = '#' . $sourceId;
+                continue;
+            }
+
+            foreach ($permissions as $permission) {
+                if (!$user->can($permission)) {
+                    $denied[] = $this->sourceName($sourceId);
+                    break;
+                }
+            }
+        }
+
+        if ($denied === []) {
+            return [];
+        }
+
+        return [Craft::t('nuke', 'You don’t have permission to delete everything in {sources}.', [
+            'sources' => implode(', ', $denied),
+        ])];
+    }
+
+    /**
+     * The sources this user may target in full — what the source picker offers.
+     *
+     * @return array<int, array{label: string, value: int, handle: string}>
+     */
+    public function sourceOptionsFor(User $user): array
+    {
+        if ($user->admin) {
+            return $this->sourceOptions();
+        }
+
+        return array_values(array_filter($this->sourceOptions(), function(array $option) use ($user) {
+            $permissions = $this->deletePermissions((int)$option['value']);
+
+            if ($permissions === null) {
+                return false;
+            }
+
+            foreach ($permissions as $permission) {
+                if (!$user->can($permission)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+    }
+
+    private function sourceName(int $sourceId): string
+    {
+        foreach ($this->sourceOptions() as $option) {
+            if ((int)$option['value'] === $sourceId) {
+                return $option['label'];
+            }
+        }
+
+        return '#' . $sourceId;
+    }
+
+    /**
      * The users a target names as authors, including ones sitting in the trash.
      *
      * @return User[]
